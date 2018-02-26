@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "baseUrl": "./test/",
+        "target": "es6",
+        "module": "commonjs",
+        "allowUnreachableCode": true,
+        "experimentalDecorators": true
+    },
+    "errorReporting": {
+        "excludeCodes": [2417]
+    }
+}
