@@ -2,7 +2,7 @@
 基于NodeJS实现的Tun2Shadowsocks.
 目前可用于Windows平台.
 
-# 特性
+# 测试实现特性
 * 缩水TCP实现(⚠️)
 * UDP转发(❌)
 * 内建DNS解析转发(❌)
