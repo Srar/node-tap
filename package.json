@@ -1,36 +1,35 @@
 {
-    "name": "twebp",
-    "version": "1.0.2",
-    "description": "native module that libwebp for nodejs without memory leaking.",
+    "name": "node-sstap",
+    "version": "1.0.0",
+    "description": "native module that openvpn tun for nodejs.",
     "main": "index.js",
     "scripts": {
-        "compile": "node-gyp rebuild",
-        "test": "npm run compile && ./node_modules/.bin/mocha ./test/test.js --expose-gc"
+        "compile": "node-gyp rebuild"
     },
     "keywords": [
-        "webp"
+        "nodejs",
+        "shadowsocks",
+        "tap",
+        "tun",
+        "openvpn",
+        "sstap"
     ],
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Srar/twebp.git"
+        "url": "git+https://github.com/Srar/node-tap.git"
     },
     "bugs": {
-        "url": "https://github.com/Srar/twebp/issues"
+        "url": "https://github.com/Srar/node-tap/issues"
     },
-    "homepage": "https://github.com/Srar/twebp#readme",
+    "homepage": "https://github.com/Srar/node-tap/blob/master/README.md",
     "author": "Srar",
     "license": "ISC",
     "dependencies": {
         "@types/node": "^8.5.7",
-        "co": "^4.6.0",
         "nan": "^2.7.0",
         "node-gyp": "^3.6.2",
         "ts-node": "^4.1.0",
         "typescript": "^2.6.2"
     },
-    "gypfile": true,
-    "devDependencies": {
-        "chai": "^4.1.2",
-        "mocha": "^4.0.1"
-    }
+    "gypfile": true
 }
