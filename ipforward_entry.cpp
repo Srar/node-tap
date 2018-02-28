@@ -15,6 +15,75 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
 
+NAN_METHOD(N_GetIpforwardEntry)
+{
+    v8::Local<v8::Array> result = Nan::New<v8::Array>();
+
+    PMIB_IPFORWARDTABLE pIpForwardTable;
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+
+    char szDestIp[128];
+    char szMaskIp[128];
+    char szGatewayIp[128];
+
+    struct in_addr IpAddr;
+
+    pIpForwardTable = (MIB_IPFORWARDTABLE *)HeapAlloc(GetProcessHeap(), 0, sizeof(MIB_IPFORWARDTABLE));
+    if (pIpForwardTable == NULL)
+    {
+        Nan::ThrowError("Error allocating memory.");
+        return;
+    }
+
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
+    {
+        HeapFree(GetProcessHeap(), 0, pIpForwardTable);
+        pIpForwardTable = (MIB_IPFORWARDTABLE *)HeapAlloc(GetProcessHeap(), 0, dwSize);
+        if (pIpForwardTable == NULL)
+        {
+            Nan::ThrowError("Error allocating memory.");
+            return;
+        }
+    }
+
+    /* Note that the IPv4 addresses returned in
+	* GetIpForwardTable entries are in network byte order
+	*/
+    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, pIpForwardTable);
+        Nan::ThrowError("GetIpforwardEntry faild.");
+        return;
+    }
+
+    for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+    {
+        v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+
+        /* Convert IPv4 addresses to strings */
+        IpAddr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
+        strcpy_s(szDestIp, sizeof(szDestIp), inet_ntoa(IpAddr));
+        IpAddr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardMask;
+        strcpy_s(szMaskIp, sizeof(szMaskIp), inet_ntoa(IpAddr));
+        IpAddr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
+        strcpy_s(szGatewayIp, sizeof(szGatewayIp), inet_ntoa(IpAddr));
+
+        Nan::Set(obj, Nan::New("destIp").ToLocalChecked(), Nan::New(szDestIp).ToLocalChecked());
+        Nan::Set(obj, Nan::New("netMask").ToLocalChecked(), Nan::New(szMaskIp).ToLocalChecked());
+        Nan::Set(obj, Nan::New("nextHop").ToLocalChecked(), Nan::New(szGatewayIp).ToLocalChecked());
+        Nan::Set(obj, Nan::New("interfaceIndex").ToLocalChecked(), Nan::New((int)pIpForwardTable->table[i].dwForwardIfIndex));
+        Nan::Set(obj, Nan::New("type").ToLocalChecked(), Nan::New((int)pIpForwardTable->table[i].dwForwardType));
+        Nan::Set(obj, Nan::New("proto").ToLocalChecked(), Nan::New((int)pIpForwardTable->table[i].dwForwardProto));
+        Nan::Set(obj, Nan::New("age").ToLocalChecked(), Nan::New((int)pIpForwardTable->table[i].dwForwardAge));
+        Nan::Set(obj, Nan::New("metric1").ToLocalChecked(), Nan::New((int)pIpForwardTable->table[i].dwForwardMetric1));
+
+        result->Set(i, obj);
+    }
+    HeapFree(GetProcessHeap(), 0, pIpForwardTable);
+    info.GetReturnValue().Set(result);
+}
+
 NAN_METHOD(N_CreateIpforwardEntry)
 {
     if (info.Length() != 1)

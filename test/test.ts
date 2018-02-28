@@ -43,7 +43,6 @@ const MIB_IPPROTO_NT_STATIC_NON_DOD = 10007;
 
 const TRUE = new Buffer([0x01, 0x00, 0x00, 0x00]);
 const FALSE = new Buffer([0x00, 0x00, 0x00, 0x00]);
-const NULL = FALSE;
 
 const IPADDRESS = "10.198.75.60";
 const NETMASK = "255.255.255.0";
@@ -59,14 +58,16 @@ async function main() {
     var deviceHandle: number = native.N_CreateDeviceFile(deviceInfo.instanceId);
     await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
 
+    var deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
+
     var initCommands: Array<Array<string>> = [
         ["netsh", "interface", "ipv4", "set", "interface", `${deviceInfo.name}`, "metric=1"],
         ["netsh", "interface", "ipv6", "set", "interface", `${deviceInfo.name}`, "metric=1"],
         ["netsh", "interface", "ip", "set", "address", `name=${deviceInfo.name}`, "static", IPADDRESS, NETMASK, GATEWAY],
         ["route", "delete", "0.0.0.0", GATEWAY],
-        ["route", "add", "10.1.1.11", "mask", "255.255.255.255", "192.168.0.1"],
-        ["route", "add", "114.114.114.114", "mask", "255.255.255.255", "192.168.0.1"],
-        ["route", "add", "114.114.115.115", "mask", "255.255.255.255", "192.168.0.1"],
+        ["route", "add", "10.1.1.11", "mask", "255.255.255.255", deafultGateway],
+        ["route", "add", "114.114.114.114", "mask", "255.255.255.255", deafultGateway],
+        ["route", "add", "114.114.115.115", "mask", "255.255.255.255", deafultGateway],
     ];
     initCommands.forEach(command => {
         console.log(command.join(" "));
@@ -88,7 +89,7 @@ async function main() {
             dwForwardNextHopAS: 0,
             dwForwardMetric1: 2,
         })
-        console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);        
+        console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
     }
 
     var rwProcess = new native.RwEventProcess(deviceHandle);
@@ -100,17 +101,21 @@ async function main() {
         });
     }
 
-    async function pp() {
+    var write = function (data: Buffer) {
+        rwProcess.writeSync(data);
+    }
+
+    async function loop() {
         var data = await read();
 
         if (PacketUtils.isIPv4(data)) {
 
             if (PacketUtils.isTCP(data)) {
-                tcp(<Buffer>data, rwProcess.writeSync);
-                return setImmediate(pp);
+                tcp(<Buffer>data, write);
+                return setImmediate(loop);
             }
 
-            return setImmediate(pp);
+            return setImmediate(loop);
         }
 
         if (PacketUtils.isARP(data)) {
@@ -118,19 +123,19 @@ async function main() {
             if (
                 (PacketUtils.ipAddressToString(arpPacket.senderIpAdress) != "10.198.75.60") ||
                 (PacketUtils.ipAddressToString(arpPacket.targetIpAddeess) != "10.198.75.61")
-            ) return setImmediate(pp);
+            ) return setImmediate(loop);
 
-            rwProcess.writeSync(ArpPacketFormatter.build(arpPacket.destinaltionAddress,
+            write(ArpPacketFormatter.build(arpPacket.destinaltionAddress,
                 new Buffer([0x00, 0xff, 0xb9, 0x5a, 0xd2, 0xd5]),
                 PacketUtils.stringToIpAddress(GATEWAY),
                 deviceInfo.address,
                 PacketUtils.stringToIpAddress(IPADDRESS)));
-            return setImmediate(pp);
+            return setImmediate(loop);
         }
 
-        return setImmediate(pp);
+        return setImmediate(loop);
     }
-    pp();
+    loop();
 }
 
 process.on("unhandledRejection", function (reason, p) {

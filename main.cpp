@@ -29,6 +29,7 @@ NAN_MODULE_INIT(Initialize)
     NAN_EXPORT(target, N_GetDeviceInfo);
     NAN_EXPORT(target, N_DeviceControl);
     NAN_EXPORT(target, N_CreateDeviceFile);
+    NAN_EXPORT(target, N_GetIpforwardEntry);
     NAN_EXPORT(target, N_CreateIpforwardEntry);
     RwEventProcess::Init(target);
 }
