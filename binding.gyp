@@ -25,7 +25,7 @@
                 "main.cpp",
                 "deviceinfo_worker.cpp",
                 "devicecontrol_worker.cpp",
-                "create_ipforward_entry.cpp",
+                "ipforward_entry.cpp",
                 "create_device_file.cpp",
                 "rwevent_process.cpp"
             ]

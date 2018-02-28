@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 #include "./error.hpp"
-#include "./create_ipforward_entry.hpp"
+#include "./ipforward_entry.hpp"
 
 #include <winsock2.h>
 #include <windows.h>

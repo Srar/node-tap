@@ -347,9 +347,6 @@ export default function (buffer: Buffer, write: Function) {
     var tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
     var tcpConnectionId: string = getConnectionId(tcpPacket);
 
-    // if (tcpPacket.destinationPort != 3500) return;
-    // if (tcpPacket.destinationIp[0] != 0xC0) return;
-
     // console.log("SYN:", tcpPacket.SYN, "RST:", tcpPacket.RST, "ACK:", tcpPacket.ACK, "PSH", tcpPacket.PSH, "LEN:", buffer.length);
     // console.log("SEQ:", tcpPacket.sequenceNumber, "DATA_LEN:", tcpPacket.payload.length);
 

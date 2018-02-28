@@ -1,5 +1,5 @@
-#ifndef CREATEIPFORWARDENTRY_H
-#define CREATEIPFORWARDENTRY_H
+#ifndef IPFORWARDENTRY_H
+#define IPFORWARDENTRY_H
 
 #include <nan.h>
 

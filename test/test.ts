@@ -4,7 +4,7 @@ import * as fs from "fs"
 import PacketUtils from "./PacketUtils"
 import { promisify } from "util"
 import * as cprocess from "child_process"
-import * as types from "./types"
+import * as NativeTypes from "./NativeTypes"
 import tcp from "./tcp"
 import ArpPacketFormatter from "./formatters/ArpPacketFormatter"
 import { setTimeout } from "timers";
@@ -54,7 +54,7 @@ function CTL_CODE(deviceType, func, method, access) {
 }
 
 async function main() {
-    var deviceInfo: types.DeviceInfo = <types.DeviceInfo>await promisify(native.N_GetDeviceInfo)();
+    var deviceInfo: NativeTypes.DeviceInfo = <NativeTypes.DeviceInfo>await promisify(native.N_GetDeviceInfo)();
 
     var deviceHandle: number = native.N_CreateDeviceFile(deviceInfo.instanceId);
     await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
@@ -75,19 +75,21 @@ async function main() {
         var errorOutput = result.stderr.toString().trim();
     });
 
-    console.log("route add status:", native.N_CreateIpforwardEntry({
-        dwForwardDest: "0.0.0.0",
-        dwForwardMask: "0.0.0.0",
-        dwForwardPolicy: 0,
-        dwForwardNextHop: GATEWAY,
-        dwForwardIfIndex: deviceInfo.index,
-        dwForwardType: MIB_IPROUTE_TYPE_INDIRECT,
-        dwForwardProto: MIB_IPPROTO_NETMGMT,
-        dwForwardAge: 0,
-        dwForwardNextHopAS: 0,
-        dwForwardMetric1: 2,
-    }));
-
+    {
+        let code: number = native.N_CreateIpforwardEntry({
+            dwForwardDest: "0.0.0.0",
+            dwForwardMask: "0.0.0.0",
+            dwForwardPolicy: 0,
+            dwForwardNextHop: GATEWAY,
+            dwForwardIfIndex: deviceInfo.index,
+            dwForwardType: MIB_IPROUTE_TYPE_INDIRECT,
+            dwForwardProto: MIB_IPPROTO_NETMGMT,
+            dwForwardAge: 0,
+            dwForwardNextHopAS: 0,
+            dwForwardMetric1: 2,
+        })
+        console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);        
+    }
 
     var rwProcess = new native.RwEventProcess(deviceHandle);
     var read = function () {
@@ -98,42 +100,16 @@ async function main() {
         });
     }
 
-    // var writingQueue: Array<Array<Buffer | Function>> = [];
-    var write = function (data: Buffer) {
-        rwProcess.writeSync(data);
-        // return new Promise((resolve, reject) => {
-        //     writingQueue.push([data, resolve]);
-        //     // rwProcess.write(data, function (err) {
-        //     //     err ? reject(err) : resolve();
-        //     // })
-        // });
-    }
-
-    // var writingQueuepp = function () {
-    //     if (writingQueue.length == 0) {
-    //         setTimeout(writingQueuepp.bind(this), 50);
-    //         return;
-    //     }
-    //     var item = writingQueue.shift();
-    //     var data: Buffer = <Buffer>item[0];
-    //     var reslove: Function = <Function>item[1];
-    //     rwProcess.write(data, function (err) {
-    //         if(err) {
-    //             console.error("writingQueuepp error:", err);
-    //         }
-    //         reslove();
-    //         process.nextTick(writingQueuepp.bind(this));
-    //     }.bind(this));
-    // }
-    // writingQueuepp();
-
     async function pp() {
         var data = await read();
 
         if (PacketUtils.isIPv4(data)) {
+
             if (PacketUtils.isTCP(data)) {
-                tcp(<Buffer>data, write);
+                tcp(<Buffer>data, rwProcess.writeSync);
+                return setImmediate(pp);
             }
+
             return setImmediate(pp);
         }
 
@@ -144,33 +120,14 @@ async function main() {
                 (PacketUtils.ipAddressToString(arpPacket.targetIpAddeess) != "10.198.75.61")
             ) return setImmediate(pp);
 
-            write(ArpPacketFormatter.build(arpPacket.destinaltionAddress,
+            rwProcess.writeSync(ArpPacketFormatter.build(arpPacket.destinaltionAddress,
                 new Buffer([0x00, 0xff, 0xb9, 0x5a, 0xd2, 0xd5]),
                 PacketUtils.stringToIpAddress(GATEWAY),
                 deviceInfo.address,
                 PacketUtils.stringToIpAddress(IPADDRESS)));
-            // console.log("ARP!!!!");
             return setImmediate(pp);
         }
-        // if (PacketUtils.isBroadCast(data)) {
-        //     if (PacketUtils.isARP(data)) {
-        //         var arpPacket = ArpPacketFormatter.format(<Buffer>data);
-        //         if (
-        //             (PacketUtils.ipAddressToString(arpPacket.senderIpAdress) != "10.198.75.60") ||
-        //             (PacketUtils.ipAddressToString(arpPacket.targetIpAddeess) != "10.198.75.61")
-        //         ) return setImmediate(pp);
-        //         rwProcess.write(ArpPacketFormatter.build(arpPacket.destinaltionAddress,
-        //             new Buffer([0x00, 0xff, 0xb9, 0x5a, 0xd2, 0xd5]),
-        //             PacketUtils.stringToIpAddress(GATEWAY),
-        //             deviceInfo.address,
-        //             PacketUtils.stringToIpAddress(IPADDRESS)),
-        //             function () { }
-        //         );
-        //         console.log("ARP!!!!");
-        //     }
-        //     return setImmediate(pp);
-        // }
-        // if (PacketUtils.isIGMP(data)) return setImmediate(pp);
+
         return setImmediate(pp);
     }
     pp();
