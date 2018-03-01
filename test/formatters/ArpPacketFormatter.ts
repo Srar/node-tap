@@ -5,23 +5,24 @@ import {
 } from "../PacketsStruct"
 import BasePacketFormatter from "./BasePacketFormatter"
 
-export default class ArpPacketFormatter {
+export default class ArpPacketFormatte extends BasePacketFormatter {
 
-    static build(targetMac: Buffer, srcMac: Buffer, srcIp: Buffer, tarMac: Buffer, tarIp: Buffer): Buffer {
+    static build(obj: ArpPacket) {
         return Buffer.concat([
-            BasePacketFormatter.build({
-                sourceAddress: srcMac,
-                destinaltionAddress: targetMac,
+            super.build({
+                sourceAddress: obj.sourceAddress,
+                destinaltionAddress: obj.targetMacAddress,
                 type: EthernetType.ARP
             }),
-            new Buffer([0x00, 0x01]),
-            new Buffer([0x08, 0x00]),
-            new Buffer([0x06, 0x04]),
-            new Buffer([0x00, 0x02]),
-            srcMac,
-            srcIp,
-            tarMac,
-            tarIp,
+            obj.hardwareType,
+            obj.protocolType,
+            obj.hardwareSize,
+            obj.protocalSize,
+            obj.opCode,
+            obj.senderMacAddress,
+            obj.senderIpAdress,
+            obj.targetMacAddress,
+            obj.targetIpAddeess,
         ]);
     }
     

@@ -6,7 +6,7 @@ import {
 } from "../PacketsStruct"
 import BasePacketFormatter from "./BasePacketFormatter"
 
-export default class IpPacketFormatter {
+export default class IpPacketFormatter extends BasePacketFormatter {
 
     static build(obj: IpPacket): Buffer {
         // unsupport ipv6 address.
@@ -34,7 +34,7 @@ export default class IpPacketFormatter {
         obj.destinationIp.copy(ipPacketBuffer, 16);
         ipPacketBuffer.writeUInt16BE(IpPacketFormatter.checksum(ipPacketBuffer), 10);
         return Buffer.concat([
-            BasePacketFormatter.build({
+            super.build({
                 sourceAddress: obj.sourceAddress,
                 destinaltionAddress: obj.destinaltionAddress,
                 type: EthernetType.IPv4
@@ -81,7 +81,7 @@ export default class IpPacketFormatter {
     }
 
     static format(bufs: Buffer): IpPacket {
-        var basePacket: BasePacket = BasePacketFormatter.format(bufs);
+        var basePacket: BasePacket = super.format(bufs);
         var flagsfrags: number = bufs.readUInt16BE(20);
         var packet = {
             version: bufs[14] >> 4,

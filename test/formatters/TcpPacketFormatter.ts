@@ -60,7 +60,7 @@ export default class TcpPacketFormatter extends IpPacketFormatter {
     }
 
     static format(bufs: Buffer): TcpPacket {
-        var ipPacket: IpPacket = IpPacketFormatter.format(bufs);
+        var ipPacket: IpPacket = super.format(bufs);
         var startOffset: number = 14 + ipPacket.ipHeaderLength * 4;
         var packet = {
             sourcePort: bufs.readUInt16BE(startOffset),

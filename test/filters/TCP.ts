@@ -1,17 +1,14 @@
-import PacketUtils from "./PacketUtils"
+import PacketUtils from "../PacketUtils"
 import {
     BasePacket,
     IpPacket,
     TcpPacket,
     IpProtocol
-} from "./PacketsStruct"
-import ShadowsocksClientSocket from "./shadowsocks/client";
-import IpacketFormatter from "./formatters/IpPacketFormatter";
-import TcpPacketFormatter from "./formatters/TcpPacketFormatter";
-import ConnectionManager from "./ConnectionManager";
-import * as EventEmitter from "events";
-import { setImmediate } from "timers";
-import * as fs from "fs";
+} from "../PacketsStruct"
+import ShadowsocksClientSocket from "../shadowsocks/client"
+import IpacketFormatter from "../formatters/IpPacketFormatter"
+import TcpPacketFormatter from "../formatters/TcpPacketFormatter"
+import * as EventEmitter from "events"
 
 interface TcpConnection {
     localAddress: Buffer,
@@ -343,7 +340,10 @@ class TcpServerSession extends EventEmitter {
 
 var connections = new Map<string, TcpServerSession>();
 
-export default function (buffer: Buffer, write: Function) {
+export default function (buffer: Buffer, write: Function, next: Function) {
+    if(!PacketUtils.isIPv4(buffer)) return next();
+    if(!PacketUtils.isTCP(buffer)) return next();
+
     var tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
     var tcpConnectionId: string = getConnectionId(tcpPacket);
 
