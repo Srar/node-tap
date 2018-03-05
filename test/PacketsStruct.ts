@@ -86,5 +86,9 @@ export interface TcpPacket extends IpPacket {
 }
 
 export interface UdpPacket extends IpPacket {
-
+    sourcePort?: number,
+    destinationPort?: number,
+    totalLength?: number,
+    checksum?: number
+    payload?: Buffer
 }

@@ -6,6 +6,7 @@ import * as NativeTypes from "./NativeTypes"
 import DeviceConfiguration from "./DeviceConfiguration"
 
 import TCP from "./filters/TCP"
+import UDP from "./filters/UDP"
 import ARP from "./filters/ARP"
 
 const TAP_IOCTL_GET_MTU = CTL_CODE(0x00000022, 3, 0, 0);
@@ -64,6 +65,7 @@ async function main() {
 
     var filters: Array<Function> = [];
     filters.push(TCP);
+    filters.push(UDP);
     filters.push(ARP);
 
     var rwProcess = new native.RwEventProcess(deviceHandle);

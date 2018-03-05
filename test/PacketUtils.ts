@@ -30,6 +30,10 @@ export default {
         return bufs[23] === 0x06;
     },
 
+    isUDP: function(bufs): boolean {
+        return bufs[23] === 0x11;
+    },
+
     isIGMP: function (bufs): boolean {
         return bufs[23] === 0x02;
     },

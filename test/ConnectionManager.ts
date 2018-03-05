@@ -13,7 +13,11 @@ class ConnectionNode<T> {
         this.lastAccessTime = Math.floor(new Date().getTime() / 1000);
         return this;
     }
-    
+
+    public getLastAccessTime(): number {
+        return this.lastAccessTime;
+    }
+
     public getKey(): string {
         return this.key;
     }
@@ -22,11 +26,11 @@ class ConnectionNode<T> {
         return this.value;
     }
 
-    public getLastNode(): ConnectionNode<T>{
+    public getLastNode(): ConnectionNode<T> {
         return this.lastNode;
     }
 
-    public getNextNode(): ConnectionNode<T>{
+    public getNextNode(): ConnectionNode<T> {
         return this.nextNode;
     }
 
@@ -51,18 +55,43 @@ class ConnectionNode<T> {
 
 export default class ConnectionManager<T> {
 
+    private gcTimer: number;
+    private timeout: number;
     private connectionCount: number = 0;
 
     private firstConnection: ConnectionNode<T>;
     private lastConnection: ConnectionNode<T>;
-    private connectionHashContainer: { [key:string]: ConnectionNode<T> } = {};
+    private connectionHashContainer: { [key: string]: ConnectionNode<T> } = {};
+
+    constructor(timeout: number = 30) {
+        this.timeout = timeout;
+        this.gcTimer = setInterval(this.gc.bind(this), 1000 * 30);
+    }
+
+    public gc() {
+        var time: number = Math.floor(new Date().getTime() / 1000);
+        while (true) {
+            if (!this.lastConnection) {
+                return;
+            }
+
+            if (time - this.lastConnection.getLastAccessTime() > this.timeout) {
+                if(this.lastConnection.getValue()["onFree"]) {
+                    this.lastConnection.getValue()["onFree"]();
+                }
+                this.remove(this.lastConnection.getKey());
+                continue;
+            }
+            return;
+        }
+    }
 
     public get(key: string): T {
         var cache = this.connectionHashContainer[key];
-        if(cache == undefined) return null;
-        if(cache.isFirstNode()) return cache.getValue();
-        
-        if(cache.isLastNode()) {
+        if (cache == undefined) return null;
+        if (cache.isFirstNode()) return cache.getValue();
+
+        if (cache.isLastNode()) {
             var newLastNode = cache.getLastNode();
             newLastNode.setNextNode(null);
         } else {
@@ -77,21 +106,21 @@ export default class ConnectionManager<T> {
     }
 
     public getFirst(): T {
-        if(this.firstConnection) {
+        if (this.firstConnection) {
             return this.firstConnection.getValue();
         }
         return null;
     }
 
-    public getLast(): T {
-        if(this.lastConnection) {
+    public getLast(raw): T {
+        if (this.lastConnection) {
             return this.lastConnection.getValue();
         }
         return null;
     }
 
     public add(key: string, val: T): boolean {
-        if(this.get(key) != null) return false;
+        if (this.get(key) != null) return false;
 
         var connection: ConnectionNode<T> = new ConnectionNode(key, val);
 
@@ -111,22 +140,22 @@ export default class ConnectionManager<T> {
 
     public remove(key: string) {
         var cache = this.connectionHashContainer[key];
-        if(cache == undefined) return;
+        if (cache == undefined) return;
 
         this.connectionCount--;
         delete this.connectionHashContainer[key];
 
-        if(this.connectionCount == 0) {
+        if (this.connectionCount == 0) {
             this.firstConnection = null;
-            this.lastConnection  = null;
+            this.lastConnection = null;
         }
 
-        if(cache.isFirstNode()) {
+        if (cache.isFirstNode()) {
             this.firstConnection = cache.getNextNode();
             return;
         }
 
-        if(cache.isLastNode()) {
+        if (cache.isLastNode()) {
             this.lastConnection = cache.getLastNode();
             return;
         }
