@@ -34,15 +34,6 @@ function CTL_CODE(deviceType, func, method, access) {
 
 async function main() {
 
-    var deviceInfo: NativeTypes.DeviceInfo = <NativeTypes.DeviceInfo>await promisify(native.N_GetDeviceInfo)();
-
-    var deviceHandle: number = native.N_CreateDeviceFile(deviceInfo.instanceId);
-    await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
-
-    Ipip.load(`${__dirname}/17monipdb.dat`);
-
-
-
     {
        var isIP = function (str) {
             var ipArray = str.split(".");
@@ -65,6 +56,12 @@ async function main() {
             Config.set("ShadowsocksHost", ips[0]);
         }
     }
+
+    var deviceInfo: NativeTypes.DeviceInfo = <NativeTypes.DeviceInfo>await promisify(native.N_GetDeviceInfo)();
+    var deviceHandle: number = native.N_CreateDeviceFile(deviceInfo.instanceId);
+    await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
+
+    Ipip.load(`${__dirname}/17monipdb.dat`);
 
     var deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
 
@@ -95,7 +92,7 @@ async function main() {
             dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
             dwForwardAge: 0,
             dwForwardNextHopAS: 0,
-            dwForwardMetric1: 10,
+            dwForwardMetric1: 2,
         })
         console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
     }
