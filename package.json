@@ -28,6 +28,7 @@
         "@types/node": "^8.5.7",
         "nan": "^2.7.0",
         "node-gyp": "^3.6.2",
+        "optimist": "^0.6.1",
         "ts-node": "^4.1.0",
         "typescript": "^2.6.2"
     },

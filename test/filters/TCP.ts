@@ -1,3 +1,4 @@
+import Config from "../Config"
 import PacketUtils from "../PacketUtils"
 import {
     BasePacket,
@@ -14,7 +15,7 @@ interface TcpConnection {
     localAddress: Buffer,
     localIp: Buffer,
     localPort: number,
-    targetAddress
+    targetAddress: Buffer,
     targetIp: Buffer,
     targetPort: number,
     targetReceiveWindow: number,
@@ -72,7 +73,12 @@ class TcpServerSession extends EventEmitter {
         this.routers[TcpConnectionState.RemoteCloseWating_1] = this.tcpClientRequestToClose.bind(this);
         this.routers[TcpConnectionState.LocalCloseWating] = this.tcpShadowsocksClosed.bind(this);
         this.routers[TcpConnectionState.LocalCloseWating_1] = this.tcpShadowsocksClosed.bind(this);
-        this.shadowsocks = new ShadowsocksClientSocket("ss.example.com", 50000, "1e6e20a6278c", "RC4MD5");
+        this.shadowsocks = new ShadowsocksClientSocket(
+            Config.get("ShadowsocksHost"),
+            Config.get("ShadowsocksPort"),
+            Config.get("ShadowsocksPassword"),
+            "RC4MD5"
+        );
     }
 
     public dataRouter(data: Buffer, tcpPacket: TcpPacket) {
@@ -150,7 +156,7 @@ class TcpServerSession extends EventEmitter {
             this.currentWindowSize = tcpPacket.window;
             this.tcpShadowsocksData();
         }
-   
+
         // console.log(this.currentSeqNum, this.currentAckNum, this.currentWindowSize);
 
 
@@ -341,8 +347,8 @@ class TcpServerSession extends EventEmitter {
 var connections = new Map<string, TcpServerSession>();
 
 export default function (buffer: Buffer, write: Function, next: Function) {
-    if(!PacketUtils.isIPv4(buffer)) return next();
-    if(!PacketUtils.isTCP(buffer)) return next();
+    if (!PacketUtils.isIPv4(buffer)) return next();
+    if (!PacketUtils.isTCP(buffer)) return next();
 
     var tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
     var tcpConnectionId: string = getConnectionId(tcpPacket);

@@ -1,13 +1,23 @@
 const native = require("../index.js");
 
+import * as dns from "dns"
+import Config from "./Config"
 import { promisify } from "util"
 import * as cprocess from "child_process"
 import * as NativeTypes from "./NativeTypes"
 import DeviceConfiguration from "./DeviceConfiguration"
 
+import Ipip from "./Ipip"
+
 import TCP from "./filters/TCP"
 import UDP from "./filters/UDP"
 import ARP from "./filters/ARP"
+
+const argv = require("optimist")
+    .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --password [shadowsocks password]")
+    .demand(["host", "port", "password"])
+    .argv;
+
 
 const TAP_IOCTL_GET_MTU = CTL_CODE(0x00000022, 3, 0, 0);
 const TAP_IOCTL_SET_MEDIA_STATUS = CTL_CODE(0x00000022, 6, 0, 0);
@@ -23,22 +33,49 @@ function CTL_CODE(deviceType, func, method, access) {
 }
 
 async function main() {
+
     var deviceInfo: NativeTypes.DeviceInfo = <NativeTypes.DeviceInfo>await promisify(native.N_GetDeviceInfo)();
 
     var deviceHandle: number = native.N_CreateDeviceFile(deviceInfo.instanceId);
     await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
+
+    Ipip.load(`${__dirname}/17monipdb.dat`);
+
+
+
+    {
+       var isIP = function (str) {
+            var ipArray = str.split(".");
+            if (ipArray.length != 4) return false;
+            for (var item of ipArray) {
+                item = parseInt(item);
+                if (isNaN(item)) return false;
+                if (item >= 1 && item <= 254) continue;
+                return false;
+            }
+            return true;
+        }
+
+        Config.set("ShadowsocksHost", argv.host);
+        Config.set("ShadowsocksPort", parseInt(argv.port));
+        Config.set("ShadowsocksPassword", argv.password);
+
+        if(!isIP(argv.host)) {
+            let ips: Array<string> = await promisify(dns.resolve4)(argv.host);
+            Config.set("ShadowsocksHost", ips[0]);
+        }
+    }
 
     var deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
 
     var initCommands: Array<Array<string>> = [
         ["netsh", "interface", "ipv4", "set", "interface", `${deviceInfo.name}`, "metric=1"],
         ["netsh", "interface", "ipv6", "set", "interface", `${deviceInfo.name}`, "metric=1"],
-        ["netsh", "interface", "ip", "set", "address", `name=${deviceInfo.name}`, "static", 
+        ["netsh", "interface", "ipv4", "set", "dnsservers", `${deviceInfo.name}`, "static", "8.8.8.8", "primary"],
+        ["netsh", "interface", "ip", "set", "address", `name=${deviceInfo.name}`, "static",
             DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
-        ["route", "delete", "0.0.0.0",  DeviceConfiguration.GATEWAY_IP_ADDRESS],
-        ["route", "add", "10.1.1.11", "mask", "255.255.255.255", deafultGateway],
-        ["route", "add", "114.114.114.114", "mask", "255.255.255.255", deafultGateway],
-        ["route", "add", "114.114.115.115", "mask", "255.255.255.255", deafultGateway],
+        ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
+        ["route", "add", Config.get("ShadowsocksHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
     ];
     initCommands.forEach(command => {
         console.log(command.join(" "));
@@ -58,7 +95,7 @@ async function main() {
             dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
             dwForwardAge: 0,
             dwForwardNextHopAS: 0,
-            dwForwardMetric1: 2,
+            dwForwardMetric1: 10,
         })
         console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
     }
