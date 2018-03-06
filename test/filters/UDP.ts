@@ -17,9 +17,9 @@ interface UdpConnection {
     crypto?: any,
     onFree?: Function
     udpClient: dgram.Socket,
-    localAddress: Buffer,
-    localIp: Buffer,
-    localPort: number,
+    sourceAddress: Buffer,
+    sourceIp: Buffer,
+    sourcePort: number,
     targetAddress: Buffer,
     targetIp: Buffer,
     targetPort: number,
@@ -34,19 +34,28 @@ function getConnectionId(udpPacket: UdpPacket): string {
     return `${sourceIp}:${udpPacket.sourcePort}-${destinationIp}:${udpPacket.destinationPort}`;
 }
 
+function increasePacketId(id: number): number {
+    id++;
+    if (id === 65536) {
+        id = 0;
+    }
+    return id;
+}
+
 function buildUdpPacket(connection: UdpConnection, data: Buffer): Buffer {
+    connection.identification = increasePacketId(connection.identification);
     return UdpPacketFormatter.build({
         sourceAddress: connection.targetAddress,
-        destinaltionAddress: connection.localAddress,
+        destinaltionAddress: connection.sourceAddress,
         version: 4,
         TTL: 64,
         protocol: 17,
-        sourceIp: connection.targetIp,
-        destinationIp: connection.localIp,
-        sourcePort: connection.targetPort,
-        destinationPort: connection.localPort,
+        sourceIp: connection.sourceIp,
+        destinationIp: connection.targetIp,
+        sourcePort: connection.sourcePort,
+        destinationPort: connection.targetPort,
         totalLength: 28 + data.length,
-        identification: connection.identification++,
+        identification: connection.identification,
         TOS: 0,
         flags: 0,
         payload: data
@@ -86,11 +95,11 @@ export default function (data: Buffer, write: Function, next: Function) {
         var udpClient = dgram.createSocket("udp4");
         connection = {
             identification: 100,
-            localAddress: udpPacket.sourceAddress,
+            sourceAddress: udpPacket.sourceAddress,
             targetAddress: udpPacket.destinaltionAddress,
-            localIp: udpPacket.destinationIp,
+            sourceIp: udpPacket.destinationIp,
             targetIp: udpPacket.sourceIp,
-            localPort: udpPacket.destinationPort,
+            sourcePort: udpPacket.destinationPort,
             targetPort: udpPacket.sourcePort,
             crypto: new RC4MD5(Config.get("ShadowsocksPassword")),
             udpClient: udpClient,
@@ -101,7 +110,8 @@ export default function (data: Buffer, write: Function, next: Function) {
             }
         };
         udpClient.on("message", (data) => {
-            var udpPacket: Buffer = buildUdpPacket(connection, connection.crypto.decryptDataWithoutStream(data));
+            data = connection.crypto.decryptDataWithoutStream(data)
+            var udpPacket: Buffer = buildUdpPacket(connection, data.slice(7));
             write(udpPacket);
         });
         udpClient.once("close", () => {
@@ -120,7 +130,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     header[4] = udpPacket.destinationIp[3];
     header[5] = ((udpPacket.destinationPort >> 8) & 0xff);
     header[6] = (udpPacket.destinationPort & 0xff);
-;
+    ;
     var bufs: Buffer = connection.crypto.encryptDataWithoutStream(Buffer.concat([header, udpPacket.payload]))
     connection.udpClient.send(bufs, 0, bufs.length, Config.get("ShadowsocksPort"), Config.get("ShadowsocksHost"), function () { });
 }
