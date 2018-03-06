@@ -25,7 +25,7 @@ export default function (data: Buffer, write: Function, next: Function) {
 
     var gatewayMac: Buffer = Buffer.allocUnsafe(6);
     DeviceConfiguration.GATEWAY_ADDRESS.split(":").forEach(function (item, index) {
-        gatewayMac[index] = parseInt(item);
+        gatewayMac[index] = parseInt(`0x${item}`);
     });
 
     var responsePacket: Buffer = ArpPacketFormatter.build({
@@ -48,9 +48,4 @@ export default function (data: Buffer, write: Function, next: Function) {
     });
 
     write(responsePacket);
-    // write(ArpPacketFormatter.build(arpPacket.destinaltionAddress,
-    //     new Buffer([0x00, 0xff, 0xb9, 0x5a, 0xd2, 0xd5]),
-    //     PacketUtils.stringToIpAddress(GATEWAY),
-    //     deviceInfo.address,
-    //     PacketUtils.stringToIpAddress(IPADDRESS)));
 }
