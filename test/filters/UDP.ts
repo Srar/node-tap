@@ -130,7 +130,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     header[4] = udpPacket.destinationIp[3];
     header[5] = ((udpPacket.destinationPort >> 8) & 0xff);
     header[6] = (udpPacket.destinationPort & 0xff);
-    ;
+
     var bufs: Buffer = connection.crypto.encryptDataWithoutStream(Buffer.concat([header, udpPacket.payload]))
     connection.udpClient.send(bufs, 0, bufs.length, Config.get("ShadowsocksPort"), Config.get("ShadowsocksHost"), function () { });
 }
