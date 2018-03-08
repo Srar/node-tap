@@ -247,11 +247,12 @@ class TcpServerSession extends EventEmitter {
             };
             fin = Object.assign(this.buildBaseTcpPacket(), fin);
             let tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
+            this.nativeWrite(tcpFinPacket);
             this.state = TcpConnectionState.LocalCloseWating_1;
             return;
         }
 
-        if (this.state == TcpConnectionState.LocalCloseWating_1) {
+        if (this.state == TcpConnectionState.LocalCloseWating_1 && tcpPacket.FIN && tcpPacket.ACK) {
             this.currentSeqNum = tcpPacket.acknowledgmentNumber;
             this.currentAckNum = tcpPacket.sequenceNumber + 1;
             let fin: TcpPacket = {
