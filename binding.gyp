@@ -23,7 +23,7 @@
             "target_name": "addon",
             "sources": [
                 "main.cpp",
-                "deviceinfo_worker.cpp",
+                "deviceinfo.cpp",
                 "devicecontrol_worker.cpp",
                 "ipforward_entry.cpp",
                 "create_device_file.cpp",

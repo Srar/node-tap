@@ -35,7 +35,7 @@ function CTL_CODE(deviceType, func, method, access) {
 async function main() {
 
     {
-       var isIP = function (str) {
+        var isIP = function (str) {
             var ipArray = str.split(".");
             if (ipArray.length != 4) return false;
             for (var item of ipArray) {
@@ -51,25 +51,38 @@ async function main() {
         Config.set("ShadowsocksPort", parseInt(argv.port));
         Config.set("ShadowsocksPassword", argv.password);
 
-        if(!isIP(argv.host)) {
+        if (!isIP(argv.host)) {
             let ips: Array<string> = await promisify(dns.resolve4)(argv.host);
             Config.set("ShadowsocksHost", ips[0]);
         }
     }
 
-    var deviceInfo: NativeTypes.DeviceInfo = <NativeTypes.DeviceInfo>await promisify(native.N_GetDeviceInfo)();
-    var deviceHandle: number = native.N_CreateDeviceFile(deviceInfo.instanceId);
+    var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
+
+    /* 设置OpenVPN网卡 */
+    var tunDevice: NativeTypes.DeviceInfo = null;
+    for (const device of allDevicesInfo) {
+        if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") != -1) {
+            tunDevice = device;
+        }
+    }
+    var deviceHandle: number = native.N_CreateDeviceFile(tunDevice.name);
     await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
 
-    Ipip.load(`${__dirname}/17monipdb.dat`);
-
+    /* 获取默认网卡 */
     var deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
+    var deafultDevice: NativeTypes.DeviceInfo = null;
+    for (const device of allDevicesInfo) {
+        if (device.gatewayIpAddress == deafultGateway) {
+            deafultDevice = device;
+        }
+    }
 
     var initCommands: Array<Array<string>> = [
-        ["netsh", "interface", "ipv4", "set", "interface", `${deviceInfo.name}`, "metric=1"],
-        ["netsh", "interface", "ipv6", "set", "interface", `${deviceInfo.name}`, "metric=1"],
-        ["netsh", "interface", "ipv4", "set", "dnsservers", `${deviceInfo.name}`, "static", "8.8.8.8", "primary"],
-        ["netsh", "interface", "ip", "set", "address", `name=${deviceInfo.name}`, "static",
+        ["netsh", "interface", "ipv4", "set", "interface", `${tunDevice.index}`, "metric=1"],
+        ["netsh", "interface", "ipv6", "set", "interface", `${tunDevice.index}`, "metric=1"],
+        ["netsh", "interface", "ipv4", "set", "dnsservers", `${tunDevice.index}`, "static", "8.8.8.8", "primary"],
+        ["netsh", "interface", "ip", "set", "address", `name=${tunDevice.index}`, "static",
             DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
         ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
         ["route", "add", Config.get("ShadowsocksHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
@@ -87,7 +100,7 @@ async function main() {
             dwForwardMask: "0.0.0.0",
             dwForwardPolicy: 0,
             dwForwardNextHop: DeviceConfiguration.GATEWAY_IP_ADDRESS,
-            dwForwardIfIndex: deviceInfo.index,
+            dwForwardIfIndex: tunDevice.index,
             dwForwardType: NativeTypes.IpforwardEntryType.MIB_IPROUTE_TYPE_INDIRECT,
             dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
             dwForwardAge: 0,
@@ -96,6 +109,8 @@ async function main() {
         })
         console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
     }
+
+    Ipip.load(`${__dirname}/17monipdb.dat`);
 
     var filters: Array<Function> = [];
     filters.push(TCP);
