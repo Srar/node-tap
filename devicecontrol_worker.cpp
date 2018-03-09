@@ -1,8 +1,6 @@
 
 #include <nan.h>
-#include <iostream>
 #include "./error.hpp"
-#include "./deviceinfo_worker.hpp"
 
 using namespace std;
 

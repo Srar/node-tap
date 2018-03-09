@@ -18,7 +18,7 @@
 
 using namespace std;
 
-#include "./deviceinfo_worker.hpp"
+#include "./deviceinfo.hpp"
 #include "./devicecontrol_worker.hpp"
 #include "./ipforward_entry.hpp"
 #include "./create_device_file.hpp"
@@ -26,7 +26,7 @@ using namespace std;
 
 NAN_MODULE_INIT(Initialize)
 {
-    NAN_EXPORT(target, N_GetDeviceInfo);
+    NAN_EXPORT(target, N_GetAllDevicesInfo);
     NAN_EXPORT(target, N_DeviceControl);
     NAN_EXPORT(target, N_CreateDeviceFile);
     NAN_EXPORT(target, N_GetIpforwardEntry);
