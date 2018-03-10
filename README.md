@@ -20,6 +20,7 @@
 * `xtudp`: UDP 多倍发包倍率(适用于游戏)
 
 # 参考
+* [net-speeder](https://github.com/snooda/net-speeder)
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))
 * [badvpn](https://github.com/ambrop72/badvpn)
 * [gotun2socks](https://github.com/yinghuocho/gotun2socks)
