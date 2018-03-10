@@ -5,13 +5,19 @@
 # 测试实现特性
 * 缩水TCP实现(⚠️)
 * UDP转发(⚠️)
+* UDP转发多倍发包(✅)
 * 内建DNS解析转发(❌)
 
 # 使用
 目前仅支持`rc4-md5`
 ```
-.\node_modules\.bin\ts-node.cmd test\test.ts --host [ss host] --port [ss port] --password [ss password]
+.\node_modules\.bin\ts-node.cmd test\test.ts --host [ss host] --port [ss port] --password [ss password] --xtudp [x times]
 ```
+
+* `host`: Shadowsocks地址
+* `port`: Shadowsocks端口
+* `password`: Shadowsocks密码
+* `xtudp`: UDP 多倍发包倍率(适用于游戏)
 
 # 参考
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))

@@ -9,13 +9,10 @@ import DeviceConfiguration from "./DeviceConfiguration"
 
 import Ipip from "./Ipip"
 
-import TCP from "./filters/TCP"
-import UDP from "./filters/UDP"
-import ARP from "./filters/ARP"
-
 const argv = require("optimist")
-    .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --password [shadowsocks password]")
+    .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --password [shadowsocks password] --xtudp [x times udp packets]")
     .demand(["host", "port", "password"])
+    .default("xtudp", 1)
     .argv;
 
 
@@ -41,7 +38,7 @@ async function main() {
             for (var item of ipArray) {
                 item = parseInt(item);
                 if (isNaN(item)) return false;
-                if (item >= 1 && item <= 254) continue;
+                if (item >= 0 && item <= 254) continue;
                 return false;
             }
             return true;
@@ -50,6 +47,11 @@ async function main() {
         Config.set("ShadowsocksHost", argv.host);
         Config.set("ShadowsocksPort", parseInt(argv.port));
         Config.set("ShadowsocksPassword", argv.password);
+        Config.set("XTUdp", parseInt(argv.xtudp));
+
+        if (isNaN(Config.get("XTUdp"))) {
+            Config.set("XTUdp", 1);
+        }
 
         if (!isIP(argv.host)) {
             let ips: Array<string> = await promisify(dns.resolve4)(argv.host);
@@ -58,7 +60,6 @@ async function main() {
     }
 
     var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
-
     /* 设置OpenVPN网卡 */
     var tunDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
@@ -77,7 +78,13 @@ async function main() {
             deafultDevice = device;
         }
     }
+    if(deafultDevice == null) {
+        throw new Error("无法找到默认网卡.");
+    }
+    Config.set("DefaultIp", deafultDevice.currentIpAddress);
+    Config.set("DefaultGateway", deafultDevice.gatewayIpAddress);
 
+    /* 设置路由表 */
     var initCommands: Array<Array<string>> = [
         ["netsh", "interface", "ipv4", "set", "interface", `${tunDevice.index}`, "metric=1"],
         ["netsh", "interface", "ipv6", "set", "interface", `${tunDevice.index}`, "metric=1"],
@@ -113,9 +120,10 @@ async function main() {
     Ipip.load(`${__dirname}/17monipdb.dat`);
 
     var filters: Array<Function> = [];
-    filters.push(TCP);
-    filters.push(UDP);
-    filters.push(ARP);
+    filters.push(require("./filters/TCP").default);
+    filters.push(require("./filters/UDP").default);
+    filters.push(require("./filters/ARP").default);
+    filters.push(require("./filters/TimesUDP").default);
 
     var rwProcess = new native.RwEventProcess(deviceHandle);
     var read = function () {
