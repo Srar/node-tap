@@ -30,6 +30,7 @@
         "nan": "^2.7.0",
         "node-gyp": "^3.6.2",
         "optimist": "^0.6.1",
+        "raw-socket": "^1.5.2",
         "ts-node": "^4.1.0",
         "typescript": "^2.6.2"
     },
