@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "baseUrl": "./test/",
+        "outDir": "./build/",
         "target": "es6",
         "module": "commonjs",
         "allowUnreachableCode": true,
