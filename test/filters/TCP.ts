@@ -74,9 +74,9 @@ class TcpServerSession extends EventEmitter {
         this.routers[TcpConnectionState.LocalCloseWating] = this.tcpShadowsocksClosed.bind(this);
         this.routers[TcpConnectionState.LocalCloseWating_1] = this.tcpShadowsocksClosed.bind(this);
         this.shadowsocks = new ShadowsocksClientSocket(
-            Config.get("ShadowsocksHost"),
-            Config.get("ShadowsocksPort"),
-            Config.get("ShadowsocksPassword"),
+            Config.get("ShadowsocksTcpHost"),
+            Config.get("ShadowsocksTcpPort"),
+            Config.get("ShadowsocksTcpPasswd"),
             "RC4MD5"
         );
     }
