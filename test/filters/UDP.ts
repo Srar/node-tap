@@ -101,7 +101,7 @@ export default function (data: Buffer, write: Function, next: Function) {
             targetIp: udpPacket.sourceIp,
             sourcePort: udpPacket.destinationPort,
             targetPort: udpPacket.sourcePort,
-            crypto: new RC4MD5(Config.get("ShadowsocksPassword")),
+            crypto: new RC4MD5(Config.get("ShadowsocksUdpPasswd")),
             udpClient: udpClient,
             onFree: function () {
                 if (isClosed) return;
@@ -132,7 +132,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     header[6] = (udpPacket.destinationPort & 0xff);
 
     var bufs: Buffer = connection.crypto.encryptDataWithoutStream(Buffer.concat([header, udpPacket.payload]))
-    connection.udpClient.send(bufs, 0, bufs.length, Config.get("ShadowsocksPort"), Config.get("ShadowsocksHost"), function () { });
+    connection.udpClient.send(bufs, 0, bufs.length, Config.get("ShadowsocksUdpPort"), Config.get("ShadowsocksUdpHost"), function () { });
 }
 
 

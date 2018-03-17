@@ -17,6 +17,12 @@
 * `host`: Shadowsocks地址
 * `port`: Shadowsocks端口
 * `password`: Shadowsocks密码
+* `tcphost`: tcp Shadowsocks地址(可选)
+* `tcpport`: tcp Shadowsocks端口(可选)
+* `tcppasswd`: tcp Shadowsocks密码(可选)
+* `udphost`: udp Shadowsocks地址(可选)
+* `udpport`: udp Shadowsocks端口(可选)
+* `udppasswd`: udp Shadowsocks密码(可选)
 * `xtudp`: UDP 多倍发包倍率(适用于游戏)
 
 # 参考

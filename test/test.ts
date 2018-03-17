@@ -10,9 +10,17 @@ import DeviceConfiguration from "./DeviceConfiguration"
 import Ipip from "./Ipip"
 
 const argv = require("optimist")
-    .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --password [shadowsocks password] --xtudp [x times udp packets]")
-    .demand(["host", "port", "password"])
+    .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --passwd [shadowsocks password] --xtudp [x times udp packets]")
     .default("xtudp", 1)
+    .default("host", undefined)
+    .default("port", undefined)
+    .default("passwd", undefined)
+    .default("tcphost", undefined)
+    .default("tcpport", undefined)
+    .default("tcppasswd", undefined)
+    .default("udphost", undefined)
+    .default("udpport", undefined)
+    .default("udppasswd", undefined)
     .argv;
 
 
@@ -44,19 +52,49 @@ async function main() {
             return true;
         }
 
-        Config.set("ShadowsocksHost", argv.host);
-        Config.set("ShadowsocksPort", parseInt(argv.port));
-        Config.set("ShadowsocksPassword", argv.password);
         Config.set("XTUdp", parseInt(argv.xtudp));
 
         if (isNaN(Config.get("XTUdp"))) {
             Config.set("XTUdp", 1);
         }
 
-        if (!isIP(argv.host)) {
-            let ips: Array<string> = await promisify(dns.resolve4)(argv.host);
-            Config.set("ShadowsocksHost", ips[0]);
+        var allHost: string = argv.host;
+        var tcpHost: string = argv.tcphost;
+        var udpHost: string = argv.udphost;
+
+        if (!isIP(allHost)) {
+            let ips: Array<string> = await promisify(dns.resolve4)(allHost);
+            allHost = ips[0];
         }
+
+        if(tcpHost == undefined) {
+            tcpHost = allHost
+        } else {
+            if (!isIP(tcpHost)) {
+                let ips: Array<string> = await promisify(dns.resolve4)(tcpHost);
+                tcpHost = ips[0];
+            }
+        }
+
+        if(udpHost == undefined) {
+            udpHost = allHost
+        } else {
+            if (!isIP(udpHost)) {
+                let ips: Array<string> = await promisify(dns.resolve4)(udpHost);
+                udpHost = ips[0];
+            }
+        }
+
+
+        Config.set("ShadowsocksTcpHost", tcpHost);
+        argv.tcpport == undefined ? Config.set("ShadowsocksTcpPort", argv.port) : Config.set("ShadowsocksTcpPort", argv.tcpport);
+        argv.tcppasswd == undefined ? Config.set("ShadowsocksTcpPasswd", argv.passwd) : Config.set("ShadowsocksTcpPasswd", argv.tcppasswd)
+
+        Config.set("ShadowsocksUdpHost", udpHost);
+        argv.udpport == undefined ? Config.set("ShadowsocksUdpPort", argv.port) : Config.set("ShadowsocksUdpPort", argv.udpport);
+        argv.udppasswd == undefined ? Config.set("ShadowsocksUdpPasswd", argv.passwd) : Config.set("ShadowsocksUdpPasswd", argv.udppasswd)
+    
+        console.log(Config.get());
     }
 
     var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
@@ -92,7 +130,9 @@ async function main() {
         ["netsh", "interface", "ip", "set", "address", `name=${tunDevice.index}`, "static",
             DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
         ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
-        ["route", "add", Config.get("ShadowsocksHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
+        ["route", "add", "10.1.1.11", "mask", "255.255.255.255", deafultGateway, "metric", "1"],
+        ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
+        ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
     ];
     initCommands.forEach(command => {
         console.log(command.join(" "));
