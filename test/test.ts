@@ -93,8 +93,6 @@ async function main() {
         Config.set("ShadowsocksUdpHost", udpHost);
         argv.udpport == undefined ? Config.set("ShadowsocksUdpPort", argv.port) : Config.set("ShadowsocksUdpPort", argv.udpport);
         argv.udppasswd == undefined ? Config.set("ShadowsocksUdpPasswd", argv.passwd) : Config.set("ShadowsocksUdpPasswd", argv.udppasswd)
-    
-        console.log(Config.get());
     }
 
     var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();

@@ -11,7 +11,7 @@ console.log("Default gateway of adapter:", Config.get("DefaultGateway"));
 /* 注册Pcap */
 var cap = new Cap();
 var device = Cap.findDevice(Config.get("DefaultIp"));
-var filter = `udp and dst host ${Config.get("ShadowsocksHost")}`;
+var filter = `udp and dst host ${Config.get("ShadowsocksUdpHost")}`;
 var bufSize = 10 * 1024 * 1024;
 var buffer = Buffer.alloc(65535);
 var linkType = cap.open(device, filter, bufSize, buffer);
