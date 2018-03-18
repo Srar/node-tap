@@ -28,28 +28,14 @@ interface UdpConnection {
 
 var connections = new ConnectionManager<UdpConnection>();
 
-function getConnectionId(udpPacket: UdpPacket): string {
-    var sourceIp: string = PacketUtils.ipAddressToString(udpPacket.sourceIp);
-    var destinationIp: string = PacketUtils.ipAddressToString(udpPacket.destinationIp);
-    return `${sourceIp}:${udpPacket.sourcePort}-${destinationIp}:${udpPacket.destinationPort}`;
-}
-
-function increasePacketId(id: number): number {
-    id++;
-    if (id === 65536) {
-        id = 0;
-    }
-    return id;
-}
-
 function buildUdpPacket(connection: UdpConnection, data: Buffer): Buffer {
-    connection.identification = increasePacketId(connection.identification);
+    connection.identification = PacketUtils.increaseNumber(connection.identification, 65536);
     return UdpPacketFormatter.build({
         sourceAddress: connection.targetAddress,
         destinaltionAddress: connection.sourceAddress,
         version: 4,
         TTL: 64,
-        protocol: 17,
+        protocol: IpProtocol.UDP,
         sourceIp: connection.sourceIp,
         destinationIp: connection.targetIp,
         sourcePort: connection.sourcePort,
@@ -86,7 +72,7 @@ export default function (data: Buffer, write: Function, next: Function) {
         return next();
     }
 
-    var connectionId: string = getConnectionId(udpPacket);
+    var connectionId: string = PacketUtils.getConnectionId(udpPacket);
 
     var connection: UdpConnection = connections.get(connectionId);
 
