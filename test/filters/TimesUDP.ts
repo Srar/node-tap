@@ -32,9 +32,9 @@ if (XTUdp > 1) {
         if (buffer[22] == SPECIAL_TTL) return;
         buffer[22] = SPECIAL_TTL;
         var sendingBuffer = buffer.slice(14, nbytes);
-        var clientIpAddress: string = PacketUtils.ipAddressToString(sendingBuffer.slice(16, 21));
+        var targetIpAddress: string = PacketUtils.ipAddressToString(sendingBuffer.slice(16, 21));
         for (var i = 1; i < XTUdp; i++) {
-            rawsocket.send(sendingBuffer, 0, sendingBuffer.length, clientIpAddress, function (error, bytes) {
+            rawsocket.send(sendingBuffer, 0, sendingBuffer.length, targetIpAddress, function (error, bytes) {
                 if(error) {
                     console.error(error);
                 }
