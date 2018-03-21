@@ -6,7 +6,7 @@ using namespace std;
 
 NAN_METHOD(N_DeviceControl)
 {
-    if (info.Length() != 5)
+    if (info.Length() != 4)
     {
         Nan::ThrowError("Wrong number of arguments.");
         return;
