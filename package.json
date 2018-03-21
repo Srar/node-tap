@@ -4,7 +4,9 @@
     "description": "native module that openvpn tun for nodejs.",
     "main": "index.js",
     "scripts": {
-        "compile": "node-gyp rebuild"
+        "build": ".\\node_modules\\.bin\\tsc --p tsconfig.json",
+        "compile": "node-gyp rebuild",
+        "package": ".\\node_modules\\.bin\\pkg output\\test.js --targets node8-win-x64 -o .\\sstap.exe"
     },
     "keywords": [
         "nodejs",
@@ -30,6 +32,7 @@
         "nan": "^2.7.0",
         "node-gyp": "^3.6.2",
         "optimist": "^0.6.1",
+        "pkg": "^4.3.0",
         "raw-socket": "^1.5.2",
         "ts-node": "^4.1.0",
         "typescript": "^2.6.2"

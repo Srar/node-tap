@@ -1,5 +1,6 @@
 const native = require("../index.js");
 
+import * as fs from "fs"
 import * as dns from "dns"
 import Config from "./Config"
 import { promisify } from "util"
@@ -39,7 +40,7 @@ function CTL_CODE(deviceType, func, method, access) {
 
 async function main() {
 
-    if(argv.h != undefined || argv.help != undefined) {
+    if (argv.h != undefined || argv.help != undefined) {
         console.log(optimist.help())
         process.exit(-1);
     }
@@ -72,7 +73,7 @@ async function main() {
             allHost = ips[0];
         }
 
-        if(tcpHost == undefined) {
+        if (tcpHost == undefined) {
             tcpHost = allHost
         } else {
             if (!isIP(tcpHost)) {
@@ -81,7 +82,7 @@ async function main() {
             }
         }
 
-        if(udpHost == undefined) {
+        if (udpHost == undefined) {
             udpHost = allHost
         } else {
             if (!isIP(udpHost)) {
@@ -98,11 +99,16 @@ async function main() {
         Config.set("ShadowsocksUdpHost", udpHost);
         argv.udpport == undefined ? Config.set("ShadowsocksUdpPort", argv.port) : Config.set("ShadowsocksUdpPort", argv.udpport);
         argv.udppasswd == undefined ? Config.set("ShadowsocksUdpPasswd", argv.passwd) : Config.set("ShadowsocksUdpPasswd", argv.udppasswd)
-    
-        if( Config.get("ShadowsocksTcpHost") == undefined || Config.get("ShadowsocksUdpHost") == undefined) {
+
+        if (Config.get("ShadowsocksTcpHost") == undefined || Config.get("ShadowsocksUdpHost") == undefined) {
             console.log(optimist.help())
             process.exit(-1);
         }
+    }
+
+    if (argv.debug) {
+        console.log(Config.get())
+        process.exit(-1);
     }
 
     var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
@@ -113,8 +119,9 @@ async function main() {
             tunDevice = device;
         }
     }
+
     var deviceHandle: number = native.N_CreateDeviceFile(tunDevice.name);
-    await promisify(native.N_DeviceControl)(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
+    native.N_DeviceControl(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
 
     /* 获取默认网卡 */
     var deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
@@ -124,7 +131,7 @@ async function main() {
             deafultDevice = device;
         }
     }
-    if(deafultDevice == null) {
+    if (deafultDevice == null) {
         throw new Error("无法找到默认网卡.");
     }
     Config.set("DefaultIp", deafultDevice.currentIpAddress);
@@ -165,7 +172,13 @@ async function main() {
         console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
     }
 
-    Ipip.load(`${__dirname}/17monipdb.dat`);
+    if (fs.existsSync(`${__dirname}/17monipdb.dat`)) {
+        Ipip.load(`${__dirname}/17monipdb.dat`);
+    } else if (fs.existsSync(`17monipdb.dat`)) {
+        Ipip.load(`17monipdb.dat`);
+    } else {
+        throw new Error("Can't found ip database.");
+    }
 
     var filters: Array<Function> = [];
     filters.push(require("./filters/TCP").default);
