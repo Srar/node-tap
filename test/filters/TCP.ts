@@ -35,12 +35,6 @@ enum TcpConnectionState {
     Closed
 }
 
-function getConnectionId(tcpPacket: TcpPacket): string {
-    var sourceIp: string = PacketUtils.ipAddressToString(tcpPacket.sourceIp);
-    var destinationIp: string = PacketUtils.ipAddressToString(tcpPacket.destinationIp);
-    return `${sourceIp}:${tcpPacket.sourcePort}-${destinationIp}:${tcpPacket.destinationPort}`;
-}
-
 class TcpServerSession extends EventEmitter {
 
     private state: TcpConnectionState;
@@ -158,8 +152,6 @@ class TcpServerSession extends EventEmitter {
         }
 
         // console.log(this.currentSeqNum, this.currentAckNum, this.currentWindowSize);
-
-
     }
 
     // TcpConnectionState.RemoteCloseWating
@@ -278,6 +270,7 @@ class TcpServerSession extends EventEmitter {
     }
 
     public buildBaseTcpPacket(dataLength: number = 0): TcpPacket {
+        this.currentIdNum = PacketUtils.increaseNumber( this.currentIdNum, 65536);
         return {
             version: 4,
             TTL: 64,
@@ -290,17 +283,9 @@ class TcpServerSession extends EventEmitter {
             destinationPort: this.connection.targetPort,
             window: this.connection.localReceiveWindow,
             totalLength: 40 + dataLength,
-            identification: this.getCurrentIdentificationNum(),
+            identification: this.currentIdNum,
             TOS: 0,
         }
-    }
-
-    public getCurrentIdentificationNum(): number {
-        this.currentIdNum++;
-        if (this.currentIdNum === 65536) {
-            this.currentIdNum = 0;
-        }
-        return this.currentIdNum;
     }
 
     public slicePacket(data: Buffer, sliceSize: number): Array<Buffer> {
@@ -352,7 +337,7 @@ export default function (buffer: Buffer, write: Function, next: Function) {
     if (!PacketUtils.isTCP(buffer)) return next();
 
     var tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
-    var tcpConnectionId: string = getConnectionId(tcpPacket);
+    var tcpConnectionId: string = PacketUtils.getConnectionId(tcpPacket);
 
     // console.log("SYN:", tcpPacket.SYN, "RST:", tcpPacket.RST, "ACK:", tcpPacket.ACK, "PSH", tcpPacket.PSH, "LEN:", buffer.length);
     // console.log("SEQ:", tcpPacket.sequenceNumber, "DATA_LEN:", tcpPacket.payload.length);

@@ -24,7 +24,7 @@
             "sources": [
                 "main.cpp",
                 "deviceinfo.cpp",
-                "devicecontrol_worker.cpp",
+                "devicecontrol.cpp",
                 "ipforward_entry.cpp",
                 "create_device_file.cpp",
                 "rwevent_process.cpp"
