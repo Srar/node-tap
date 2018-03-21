@@ -19,7 +19,7 @@
 using namespace std;
 
 #include "./deviceinfo.hpp"
-#include "./devicecontrol_worker.hpp"
+#include "./devicecontrol.hpp"
 #include "./ipforward_entry.hpp"
 #include "./create_device_file.hpp"
 #include "./rwevent_process.hpp"
