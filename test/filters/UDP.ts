@@ -98,6 +98,7 @@ export default function (data: Buffer, write: Function, next: Function) {
         udpClient.on("message", (data) => {
             data = connection.crypto.decryptDataWithoutStream(data)
             var udpPacket: Buffer = buildUdpPacket(connection, data.slice(7));
+            connections.get(connectionId);
             write(udpPacket);
         });
         udpClient.once("close", () => {
