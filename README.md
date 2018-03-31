@@ -14,7 +14,8 @@
 1) 从Releases中下载已经打包完的版本.
 > Releases中版本均64位编译, 可能无法在32位平台使用.
 2) 安装[OpenVPN Tap-windows](https://swupdate.openvpn.org/community/releases/tap-windows-9.21.2.exe)驱动.
-3) 使用管理员权限cmd或powershell中在已以下命令运行node-sstap.
+3) 安装[Npcap](https://nmap.org/npcap/)来用于UDP多倍发包.
+4) 使用管理员权限cmd或powershell中在已以下命令运行node-sstap.
 ```
 .\sstap.exe --host [ss host] --port [ss port] --passwd [ss password] --xtudp [x times]
 ```
