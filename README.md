@@ -37,6 +37,10 @@
 
 此时全部流量就全部转发到对应Shadowsocks服务器了.
 
+# 框架图
+![snapshort.png](https://i.loli.net/2018/03/31/5abf8255372bd.png)
+> 该图来源: [http://blog.ucloud.cn/archives/3115](http://blog.ucloud.cn/archives/3115)
+
 # 参考
 * [net-speeder](https://github.com/snooda/net-speeder)
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))
