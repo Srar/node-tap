@@ -1,5 +1,5 @@
 # node-tap
-基于NodeJS实现的Tun2Shadowsocks.
+基于TypeScript实现的Tun2Shadowsocks.
 目前可用于Windows平台.
 
 # 测试实现特性
