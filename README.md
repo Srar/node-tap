@@ -24,6 +24,10 @@
 * `udpport`: udp Shadowsocks端口(可选)
 * `udppasswd`: udp Shadowsocks密码(可选)
 * `xtudp`: UDP 多倍发包倍率(适用于游戏)
+* `dns`: 指定DNS(默认8.8.8.8)
+* `skipdns`: DNS不经过Shadowsocks转发(默认false)
+
+> 启动添加路由时出现`对象已存在`或`找不到元素`为正常现象.
 
 # 参考
 * [net-speeder](https://github.com/snooda/net-speeder)

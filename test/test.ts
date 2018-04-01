@@ -4,6 +4,7 @@ import * as fs from "fs"
 import * as dns from "dns"
 import Config from "./Config"
 import { promisify } from "util"
+import * as iconv from "iconv-lite"
 import * as cprocess from "child_process"
 import * as NativeTypes from "./NativeTypes"
 import DeviceConfiguration from "./DeviceConfiguration"
@@ -22,6 +23,8 @@ const optimist = require("optimist")
     .default("udphost", undefined)
     .default("udpport", undefined)
     .default("udppasswd", undefined)
+    .default("dns", "8.8.8.8")
+    .default("skipdns", "false")
 const argv = optimist.argv;
 
 
@@ -91,7 +94,6 @@ async function main() {
             }
         }
 
-
         Config.set("ShadowsocksTcpHost", tcpHost);
         argv.tcpport == undefined ? Config.set("ShadowsocksTcpPort", argv.port) : Config.set("ShadowsocksTcpPort", argv.tcpport);
         argv.tcppasswd == undefined ? Config.set("ShadowsocksTcpPasswd", argv.passwd) : Config.set("ShadowsocksTcpPasswd", argv.tcppasswd)
@@ -104,6 +106,9 @@ async function main() {
             console.log(optimist.help())
             process.exit(-1);
         }
+
+        Config.set("DNS", argv.dns);
+        Config.set("SkipDNS", (argv.skipdns.toLocaleLowerCase() == "true"));
     }
 
     if (argv.debug) {
@@ -111,8 +116,8 @@ async function main() {
         process.exit(-1);
     }
 
-    var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
     /* 设置OpenVPN网卡 */
+    var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
     var tunDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
         if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") != -1) {
@@ -141,19 +146,28 @@ async function main() {
     var initCommands: Array<Array<string>> = [
         ["netsh", "interface", "ipv4", "set", "interface", `${tunDevice.index}`, "metric=1"],
         ["netsh", "interface", "ipv6", "set", "interface", `${tunDevice.index}`, "metric=1"],
-        ["netsh", "interface", "ipv4", "set", "dnsservers", `${tunDevice.index}`, "static", "8.8.8.8", "primary"],
+        ["netsh", "interface", "ipv4", "set", "dnsservers", `${tunDevice.index}`, "static", Config.get("DNS"), "primary"],
         ["netsh", "interface", "ip", "set", "address", `name=${tunDevice.index}`, "static",
             DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
         ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
+        ["route", "delete", Config.get("DNS")],
         ["route", "add", "10.1.1.11", "mask", "255.255.255.255", deafultGateway, "metric", "1"],
         ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
         ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
     ];
+
+    if (Config.get("SkipDNS")) {
+        initCommands.push(
+            ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
+        );
+    }
+
     initCommands.forEach(command => {
-        console.log(command.join(" "));
+        process.stdout.write(command.join(" ") + " ");
         var result = cprocess.spawnSync(command[0], command.slice(1), { timeout: 1000 * 5 });
-        var output = result.stdout.toString().trim();
-        var errorOutput = result.stderr.toString().trim();
+        var errorMessage: string = iconv.decode(result.stderr, "cp936").toString().trim();
+        if(errorMessage.length != 0) process.stderr.write(errorMessage);
+        process.stdout.write("\n");
     });
 
     {

@@ -29,6 +29,7 @@
     "dependencies": {
         "@types/node": "^8.5.7",
         "cap": "^0.2.0",
+        "iconv-lite": "^0.4.19",
         "nan": "^2.7.0",
         "node-gyp": "^3.6.2",
         "optimist": "^0.6.1",
