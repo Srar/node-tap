@@ -3,19 +3,22 @@ import {
     IpPacket,
     TcpPacket,
     UdpPacket,
+    Ipv6Packet,
 } from "../PacketsStruct"
 import PacketUtils from "../PacketUtils"
 
+import BufferFormatter from "./BufferFormatter"
 import IpPacketFormatter from "./IpPacketFormatter"
 
 export default class UdpPacketFormatter extends IpPacketFormatter {
 
     static build(obj: UdpPacket): Buffer {
         var udpPacketBuffer = Buffer.allocUnsafe(8);
-        udpPacketBuffer.writeUInt16BE(obj.sourcePort, 0);
-        udpPacketBuffer.writeUInt16BE(obj.destinationPort, 2);
-        udpPacketBuffer.writeUInt16BE(udpPacketBuffer.length + obj.payload.length, 4);
-        udpPacketBuffer.writeUInt16BE(0, 6);
+        var bufferFormatter = new BufferFormatter(udpPacketBuffer);
+        bufferFormatter.writeUInt16BE(obj.sourcePort);
+        bufferFormatter.writeUInt16BE(obj.destinationPort);
+        bufferFormatter.writeUInt16BE(udpPacketBuffer.length + obj.payload.length);
+        bufferFormatter.writeUInt16BE(0);
         udpPacketBuffer = Buffer.concat([udpPacketBuffer, obj.payload]);
 
         var udpPacketTotalLength = Buffer.allocUnsafe(2);
@@ -30,24 +33,22 @@ export default class UdpPacketFormatter extends IpPacketFormatter {
             ])
         ), 6);
 
-        return Buffer.concat([
-            super.build(obj),
-            udpPacketBuffer
-        ]);
+        obj.tcpipPayload = udpPacketBuffer;
+
+        return super.build(obj);
     }
 
     static format(bufs: Buffer): UdpPacket {
-        var ipPacket: IpPacket = super.format(bufs);
-        var startOffset: number = 14 + ipPacket.ipHeaderLength * 4;
+        var ipPacket: IpPacket | Ipv6Packet = super.format(bufs);
+        var bufferFormatter = new BufferFormatter(ipPacket.tcpipPayload);
         var packet: UdpPacket = {
-            sourcePort: bufs.readUInt16BE(startOffset),
-            destinationPort: bufs.readUInt16BE(startOffset + 2),
-            totalLength: bufs.readUInt16BE(startOffset + 4),
-            checksum: bufs.readUInt16BE(startOffset + 6),
+            sourcePort: bufferFormatter.readUInt16BE(),
+            destinationPort: bufferFormatter.readUInt16BE(),
+            totalLength: bufferFormatter.readUInt16BE(),
+            checksum: bufferFormatter.readUInt16BE(),
             payload: null,
         };
-        packet.payload = bufs.slice(startOffset + 8);
-
+        packet.payload = bufferFormatter.readBuffer();
         packet = Object.assign(ipPacket, packet);
         return <UdpPacket>packet;
     }

@@ -60,7 +60,8 @@ export interface IpPacket extends BasePacket {
     protocol?: IpProtocol,
     checksum?: number,
     sourceIp?: Buffer,
-    destinationIp?: Buffer
+    destinationIp?: Buffer,
+    tcpipPayload?: Buffer,
 }
 
 export interface Ipv6Packet extends BasePacket {
@@ -70,7 +71,8 @@ export interface Ipv6Packet extends BasePacket {
     protocol?: IpProtocol,
     hopLimit?: number,
     sourceIp?: Buffer,
-    destinationIp?: Buffer
+    destinationIp?: Buffer,
+    tcpipPayload?: Buffer,
 }
 
 export interface TcpPacket extends IpPacket {

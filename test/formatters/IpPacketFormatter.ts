@@ -20,7 +20,7 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             bufferFormatter.writeByte(ipv4obj.TOS);
             // set ip packet total length.
             bufferFormatter.writeUInt16BE(ipv4obj.totalLength);
-            bufferFormatter.writeUInt32BE(ipv4obj.identification);
+            bufferFormatter.writeUInt16BE(ipv4obj.identification);
             // flags
             bufferFormatter.writeByte(0x40);
             // fragOffset
@@ -35,14 +35,19 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             bufferFormatter.writeBytes(ipv4obj.destinationIp);
             ipPacketBuffer.writeUInt16BE(IpPacketFormatter.checksum(ipPacketBuffer), 10);
 
-            return Buffer.concat([
+            var concatArray = [
                 super.build({
                     sourceAddress: ipv4obj.sourceAddress,
                     destinaltionAddress: ipv4obj.destinaltionAddress,
                     type: EthernetType.IPv4
                 }),
                 ipPacketBuffer
-            ]);
+            ];
+
+            if (ipv4obj.tcpipPayload) {
+                concatArray.push(ipv4obj.tcpipPayload);
+            }
+            return Buffer.concat(concatArray);
         } else if (obj.type == EthernetType.IPv6) {
             var ipv6obj: Ipv6Packet = obj;
             var ipPacketBuffer: Buffer = Buffer.allocUnsafe(40);
@@ -57,14 +62,19 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             bufferFormatter.writeByte(ipv6obj.hopLimit || 0xff);
             bufferFormatter.writeBytes(ipv6obj.sourceIp);
             bufferFormatter.writeBytes(ipv6obj.destinationIp);
-            return Buffer.concat([
+            var concatArray = [
                 super.build({
                     sourceAddress: ipv6obj.sourceAddress,
                     destinaltionAddress: ipv6obj.destinaltionAddress,
                     type: EthernetType.IPv6
                 }),
                 ipPacketBuffer
-            ]);
+            ];
+
+            if (ipv6obj.tcpipPayload) {
+                concatArray.push(ipv6obj.tcpipPayload);
+            }
+            return Buffer.concat(concatArray);
         } else {
             throw new TypeError("Unsupport ethernet type.");
         }
@@ -125,7 +135,9 @@ export default class IpPacketFormatter extends BasePacketFormatter {
                 checksum: bufferFormatter.readUInt16BE(),
                 sourceIp: bufferFormatter.readBuffer(4),
                 destinationIp: bufferFormatter.readBuffer(4),
+                tcpipPayload: null,
             }
+            packet.tcpipPayload = bufferFormatter.readBuffer();
             packet = Object.assign(basePacket, packet);
             return <IpPacket>packet;
         } else if (basePacket.type == EthernetType.IPv6) {
@@ -135,6 +147,7 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             packet.hopLimit = bufferFormatter.readByte();
             packet.sourceIp = bufferFormatter.readBuffer(16);
             packet.destinationIp = bufferFormatter.readBuffer(16);
+            packet.tcpipPayload = bufferFormatter.readBuffer();
             packet = Object.assign(basePacket, packet);
             return <IpPacket>packet;
         } else {
