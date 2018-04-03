@@ -70,7 +70,7 @@ export default class BufferFormatter {
 
     public writeUInt32BE(value: number) {
         this.buffer.writeUInt32BE(value, this.offset);
-        this.increaseOffset(2);
+        this.increaseOffset(4);
     }
 
     public setOffset(value: number) {
