@@ -3,8 +3,9 @@ import * as EventEmitter from "events";
 import { Socket } from "net";
 
 import RC4MD5 from "./crypto/RC4MD5";
+import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter"
 
-export default class ShadowsocksClientSocket extends EventEmitter {
+export default class ShadowsocksTcpClient extends EventEmitter {
 
     private method: any;
 
@@ -17,6 +18,7 @@ export default class ShadowsocksClientSocket extends EventEmitter {
         private host: string,
         private port: number,
         password: string, method: string,
+        private isIpv4Address: boolean = true,
         private targetHost: string = "",
         private targetPort: number = 0,
     ) {
@@ -25,16 +27,13 @@ export default class ShadowsocksClientSocket extends EventEmitter {
         this.socket.setNoDelay(true);
     }
 
-    public connect(targetHost: string = "", targetPort: number = 0) {
+    public connect(isIpv4Address: boolean, targetHost?: string, targetPort?: number) {
         this.socket.on("data", this.onData.bind(this));
         this.socket.on("error", this.disconnect.bind(this));
         this.socket.connect(this.port, this.host, this.onConnected.bind(this));
-        if (targetHost != "") {
-            this.targetHost = targetHost;
-        }
-        if (targetPort != 0) {
-            this.targetPort = targetPort;
-        }
+        if (targetHost) this.targetHost = targetHost;
+        if (targetPort) this.targetPort = targetPort;
+        if (isIpv4Address) this.isIpv4Address = isIpv4Address;
     }
 
     public disconnect() {
@@ -51,28 +50,14 @@ export default class ShadowsocksClientSocket extends EventEmitter {
         this.removeAllListeners();
     }
 
+    /* support ipv4, ipv6 without domain */
     private onConnected() {
-        var isIPAddress = /^((25[0-5]|2[0-4]\d|[01]?\d\d?)($|(?!\.$)\.)){4}$/.test(this.targetHost);
-        var buffer;
-        if (isIPAddress) {
-            var items = this.targetHost.split(".");
-            buffer = Buffer.allocUnsafe(7);
-            buffer[0] = 0x01;
-            buffer[1] = items[0];
-            buffer[2] = items[1];
-            buffer[3] = items[2];
-            buffer[4] = items[3];
-            buffer[5] = ((this.targetPort >> 8) & 0xff);
-            buffer[6] = (this.targetPort & 0xff);
-        } else {
-            buffer = Buffer.allocUnsafe(1 + 1 + this.targetHost.length + 2);
-            buffer[0] = 0x03;
-            buffer[1] = this.targetHost.length;
-            buffer.write(this.targetHost, 2);
-            buffer[buffer.length - 2] = ((this.targetPort >> 8) & 0xff);
-            buffer[buffer.length - 1] = (this.targetPort & 0xff);
-        }
-        this.socket.write(this.method.encryptData(buffer));
+        var headerBuffer: Buffer = ShadowsocksFormatter.build({
+            version: this.isIpv4Address ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
+            address: this.targetHost,
+            port: this.targetPort
+        }); 
+        this.socket.write(this.method.encryptData(headerBuffer));
         for (let buffer of this.buffersCache) this.socket.write(this.method.encryptData(buffer));
         this.buffersCache = [];
         this.isConnected = true;

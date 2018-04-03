@@ -2,45 +2,72 @@ import {
     BasePacket,
     IpPacket,
     IpProtocol,
+    Ipv6Packet,
     EthernetType
 } from "../PacketsStruct"
+import BufferFormatter from "./BufferFormatter"
 import BasePacketFormatter from "./BasePacketFormatter"
 
 export default class IpPacketFormatter extends BasePacketFormatter {
 
-    static build(obj: IpPacket): Buffer {
-        // unsupport ipv6 address.
-        var ipPacketBuffer: Buffer = Buffer.allocUnsafe(20);
-        ipPacketBuffer[0] = (obj.version << 4) | (20 / 4);
-        ipPacketBuffer[1] = obj.TOS;
-        // set ip packet total length.
-        ipPacketBuffer.writeUInt16BE(obj.totalLength, 2);
-        try {
-            ipPacketBuffer.writeUInt16BE(obj.identification, 4);
-        } catch (error) {
-            console.log(obj.identification);
+    static build(obj: IpPacket | Ipv6Packet): Buffer {
+
+        if (obj.type == undefined || obj.type == null || obj.type == EthernetType.IPv4) {
+            var ipv4obj: IpPacket = obj;
+            var ipPacketBuffer: Buffer = Buffer.allocUnsafe(20);
+            var bufferFormatter = new BufferFormatter(ipPacketBuffer);
+            bufferFormatter.writeByte((ipv4obj.version << 4) | (20 / 4));
+            bufferFormatter.writeByte(ipv4obj.TOS);
+            // set ip packet total length.
+            bufferFormatter.writeUInt16BE(ipv4obj.totalLength);
+            bufferFormatter.writeUInt32BE(ipv4obj.identification);
+            // flags
+            bufferFormatter.writeByte(0x40);
+            // fragOffset
+            bufferFormatter.writeByte(0x00);
+            // ttl
+            bufferFormatter.writeByte(ipv4obj.TTL);
+            // protocol
+            bufferFormatter.writeByte(ipv4obj.protocol);
+            // checksum
+            bufferFormatter.writeUInt16BE(0);
+            bufferFormatter.writeBytes(ipv4obj.sourceIp);
+            bufferFormatter.writeBytes(ipv4obj.destinationIp);
+            ipPacketBuffer.writeUInt16BE(IpPacketFormatter.checksum(ipPacketBuffer), 10);
+
+            return Buffer.concat([
+                super.build({
+                    sourceAddress: ipv4obj.sourceAddress,
+                    destinaltionAddress: ipv4obj.destinaltionAddress,
+                    type: EthernetType.IPv4
+                }),
+                ipPacketBuffer
+            ]);
+        } else if (obj.type == EthernetType.IPv6) {
+            var ipv6obj: Ipv6Packet = obj;
+            var ipPacketBuffer: Buffer = Buffer.allocUnsafe(40);
+            var bufferFormatter = new BufferFormatter(ipPacketBuffer);
+            if (ipv6obj.flow == undefined) {
+                ipv6obj.flow = 0;
+                ipv6obj.flow |= 0x60000000;
+            }
+            bufferFormatter.writeUInt32BE(ipv6obj.flow);
+            bufferFormatter.writeUInt16BE(ipv6obj.payloadLength);
+            bufferFormatter.writeByte(ipv6obj.protocol);
+            bufferFormatter.writeByte(ipv6obj.hopLimit || 0xff);
+            bufferFormatter.writeBytes(ipv6obj.sourceIp);
+            bufferFormatter.writeBytes(ipv6obj.destinationIp);
+            return Buffer.concat([
+                super.build({
+                    sourceAddress: ipv6obj.sourceAddress,
+                    destinaltionAddress: ipv6obj.destinaltionAddress,
+                    type: EthernetType.IPv6
+                }),
+                ipPacketBuffer
+            ]);
+        } else {
+            throw new TypeError("Unsupport ethernet type.");
         }
-        ipPacketBuffer.writeUInt16BE(obj.identification, 4);
-        // flags
-        ipPacketBuffer[6] = 0x40;
-        // fragOffset
-        ipPacketBuffer[7] = 0x00
-        // time to live.
-        ipPacketBuffer[8] = obj.TTL;
-        ipPacketBuffer[9] = obj.protocol;
-        // for computing checksum.
-        ipPacketBuffer.writeUInt16BE(0, 10);
-        obj.sourceIp.copy(ipPacketBuffer, 12);
-        obj.destinationIp.copy(ipPacketBuffer, 16);
-        ipPacketBuffer.writeUInt16BE(IpPacketFormatter.checksum(ipPacketBuffer), 10);
-        return Buffer.concat([
-            super.build({
-                sourceAddress: obj.sourceAddress,
-                destinaltionAddress: obj.destinaltionAddress,
-                type: EthernetType.IPv4
-            }),
-            ipPacketBuffer
-        ]);
     }
 
     // from https://stackoverflow.com/questions/8269693/crc-checking-done-automatically-on-tcp-ip
@@ -80,24 +107,38 @@ export default class IpPacketFormatter extends BasePacketFormatter {
         return sum;
     }
 
-    static format(bufs: Buffer): IpPacket {
-        var basePacket: BasePacket = super.format(bufs);
-        var flagsfrags: number = bufs.readUInt16BE(20);
-        var packet = {
-            version: bufs[14] >> 4,
-            ipHeaderLength: bufs[14] & 0x0F,
-            TOS: bufs[15],
-            totalLength: bufs.readUInt16BE(16),
-            identification: bufs.readUInt16BE(18),
-            flags: flagsfrags >> 13,
-            fragOffset: flagsfrags & 0x1FFF,
-            TTL: bufs[22],
-            protocol: <IpProtocol>bufs[23],
-            checksum: bufs.readUInt16BE(24),
-            sourceIp: bufs.slice(26, 30),
-            destinationIp: bufs.slice(30, 34),
+    static format(buffer: Buffer): IpPacket | Ipv6Packet {
+        let basePacket: BasePacket = super.format(buffer);
+        let bufferFormatter = new BufferFormatter(buffer);
+        bufferFormatter.setOffset(14);
+        if (basePacket.type == EthernetType.IPv4) {
+            let packet = {
+                version: bufferFormatter.readByte(false) >> 4,
+                ipHeaderLength: bufferFormatter.readByte() & 0x0F,
+                TOS: bufferFormatter.readByte(),
+                totalLength: bufferFormatter.readUInt16BE(),
+                identification: bufferFormatter.readUInt16BE(),
+                flags: bufferFormatter.readUInt16BE(false) >> 13,
+                fragOffset: bufferFormatter.readUInt16BE() & 0x1FFF,
+                TTL: bufferFormatter.readByte(),
+                protocol: <IpProtocol>bufferFormatter.readByte(),
+                checksum: bufferFormatter.readUInt16BE(),
+                sourceIp: bufferFormatter.readBuffer(4),
+                destinationIp: bufferFormatter.readBuffer(4),
+            }
+            packet = Object.assign(basePacket, packet);
+            return <IpPacket>packet;
+        } else if (basePacket.type == EthernetType.IPv6) {
+            var packet: Ipv6Packet = {};
+            packet.flow = bufferFormatter.readUInt32BE();
+            packet.payloadLength = bufferFormatter.readUInt16BE();
+            packet.hopLimit = bufferFormatter.readByte();
+            packet.sourceIp = bufferFormatter.readBuffer(16);
+            packet.destinationIp = bufferFormatter.readBuffer(16);
+            packet = Object.assign(basePacket, packet);
+            return <IpPacket>packet;
+        } else {
+            throw new TypeError("Unsupport ethernet type.");
         }
-        packet = Object.assign(basePacket, packet);
-        return <IpPacket>packet;
     }
 }

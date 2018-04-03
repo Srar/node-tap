@@ -6,7 +6,7 @@ import {
     TcpPacket,
     IpProtocol
 } from "../PacketsStruct"
-import ShadowsocksClientSocket from "../shadowsocks/client"
+import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient"
 import IpacketFormatter from "../formatters/IpPacketFormatter"
 import TcpPacketFormatter from "../formatters/TcpPacketFormatter"
 import * as EventEmitter from "events"
@@ -38,7 +38,7 @@ enum TcpConnectionState {
 class TcpServerSession extends EventEmitter {
 
     private state: TcpConnectionState;
-    private shadowsocks: ShadowsocksClientSocket;
+    private shadowsocks: ShadowsocksTcpClient;
 
     private currentIdNum: number;
     private currentSeqNum: number = 0;
@@ -67,7 +67,7 @@ class TcpServerSession extends EventEmitter {
         this.routers[TcpConnectionState.RemoteCloseWating_1] = this.tcpClientRequestToClose.bind(this);
         this.routers[TcpConnectionState.LocalCloseWating] = this.tcpShadowsocksClosed.bind(this);
         this.routers[TcpConnectionState.LocalCloseWating_1] = this.tcpShadowsocksClosed.bind(this);
-        this.shadowsocks = new ShadowsocksClientSocket(
+        this.shadowsocks = new ShadowsocksTcpClient(
             Config.get("ShadowsocksTcpHost"),
             Config.get("ShadowsocksTcpPort"),
             Config.get("ShadowsocksTcpPasswd"),
@@ -104,7 +104,7 @@ class TcpServerSession extends EventEmitter {
             var tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
             this.nativeWrite(tcpAckpacket);
             this.state = TcpConnectionState.HandShake_ACK;
-            this.shadowsocks.connect(PacketUtils.ipAddressToString(this.connection.localIp), this.connection.localPort);
+            this.shadowsocks.connect(PacketUtils.isIPv4(data), PacketUtils.ipAddressToString(this.connection.localIp), this.connection.localPort);
             this.shadowsocks.on("data", this.tcpShadowsocksData.bind(this));
             this.shadowsocks.on("disconnected", this.tcpShadowsocksClosed.bind(this));
             return;
@@ -270,7 +270,7 @@ class TcpServerSession extends EventEmitter {
     }
 
     public buildBaseTcpPacket(dataLength: number = 0): TcpPacket {
-        this.currentIdNum = PacketUtils.increaseNumber( this.currentIdNum, 65536);
+        this.currentIdNum = PacketUtils.increaseNumber(this.currentIdNum, 65536);
         return {
             version: 4,
             TTL: 64,
