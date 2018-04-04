@@ -17,7 +17,7 @@
 3) 安装[Npcap](https://nmap.org/npcap/)来用于UDP多倍发包.
 4) 使用管理员权限cmd或powershell中在已以下命令运行node-sstap.
 ```
-.\sstap.exe --host [ss host] --port [ss port] --passwd [ss password] --xtudp [x times]
+.\sstap.exe --host [ss host] --port [ss port] --passwd [ss password] --xtudp [x times] --method [ss method]
 ```
 
 * `host`: 默认 Shadowsocks地址(可选)
