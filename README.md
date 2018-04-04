@@ -23,19 +23,22 @@
 * `host`: 默认 Shadowsocks地址(可选)
 * `port`: 默认 Shadowsocks端口(可选)
 * `passwd`: 默认 Shadowsocks密码(可选)
+* `method`: 默认 Shadowsocks加密方式(可选)
 * `tcphost`: TCP Shadowsocks地址(可选)
 * `tcpport`: TCP Shadowsocks端口(可选)
 * `tcppasswd`: TCP Shadowsocks密码(可选)
+* `tcpmethod`: TCP Shadowsocks加密方式(可选)
 * `udphost`: UDP Shadowsocks地址(可选)
 * `udpport`: UDP Shadowsocks端口(可选)
 * `udppasswd`: UDP Shadowsocks密码(可选)
+* `udpmethod`: UDP Shadowsocks加密方式(可选)
 * `xtudp`: UDP 多倍发包倍率(适用于游戏)
 * `dns`: 指定DNS(默认8.8.8.8)
 * `skipdns`: DNS不经过Shadowsocks转发(默认false)
 
 > 启动添加路由时出现`对象已存在`或`找不到元素`为正常现象.
 
-> 目前仅支持 RC4-MD5 加密方式.
+> 目前仅支持 `rc4-md5`, `aes-256-cfb` 加密方式.
 
 如果已经成功运行你应该会看到以下信息:
 ![snapshort.png](https://i.loli.net/2018/03/31/5abf7da82d4d1.png)
