@@ -17,12 +17,15 @@ const optimist = require("optimist")
     .default("host", undefined)
     .default("port", undefined)
     .default("passwd", undefined)
+    .default("method", undefined)
     .default("tcphost", undefined)
     .default("tcpport", undefined)
     .default("tcppasswd", undefined)
+    .default("tcpmethod", undefined)
     .default("udphost", undefined)
     .default("udpport", undefined)
     .default("udppasswd", undefined)
+    .default("udpmethod", undefined)
     .default("dns", "8.8.8.8")
     .default("skipdns", "false")
 const argv = optimist.argv;
@@ -96,13 +99,18 @@ async function main() {
 
         Config.set("ShadowsocksTcpHost", tcpHost);
         argv.tcpport == undefined ? Config.set("ShadowsocksTcpPort", argv.port) : Config.set("ShadowsocksTcpPort", argv.tcpport);
-        argv.tcppasswd == undefined ? Config.set("ShadowsocksTcpPasswd", argv.passwd) : Config.set("ShadowsocksTcpPasswd", argv.tcppasswd)
+        argv.tcppasswd == undefined ? Config.set("ShadowsocksTcpPasswd", argv.passwd) : Config.set("ShadowsocksTcpPasswd", argv.tcppasswd);
+        argv.tcpmethod == undefined ? Config.set("ShadowsocksTcpMethod", argv.method) : Config.set("ShadowsocksTcpMethod", argv.tcpmethod);
 
         Config.set("ShadowsocksUdpHost", udpHost);
         argv.udpport == undefined ? Config.set("ShadowsocksUdpPort", argv.port) : Config.set("ShadowsocksUdpPort", argv.udpport);
-        argv.udppasswd == undefined ? Config.set("ShadowsocksUdpPasswd", argv.passwd) : Config.set("ShadowsocksUdpPasswd", argv.udppasswd)
+        argv.udppasswd == undefined ? Config.set("ShadowsocksUdpPasswd", argv.passwd) : Config.set("ShadowsocksUdpPasswd", argv.udppasswd);
+        argv.udpmethod == undefined ? Config.set("ShadowsocksUdpMethod", argv.method) : Config.set("ShadowsocksUdpMethod", argv.udpmethod);
 
-        if (Config.get("ShadowsocksTcpHost") == undefined || Config.get("ShadowsocksUdpHost") == undefined) {
+        if (Config.get("ShadowsocksTcpHost") == undefined || 
+            Config.get("ShadowsocksUdpHost") == undefined ||
+            Config.get("ShadowsocksTcpMethod") == undefined ||
+            Config.get("ShadowsocksUdpMethod") == undefined) {
             console.log(optimist.help())
             process.exit(-1);
         }

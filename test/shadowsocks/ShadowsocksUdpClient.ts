@@ -1,8 +1,9 @@
 import * as dgram from "dgram"
 import * as EventEmitter from "events"
+
+import SSCrypto from "./crypto/SSCrypto"
 import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter"
 
-import RC4MD5 from "./crypto/RC4MD5";
 
 export default class ShadowsocksUdpClient extends EventEmitter {
 
@@ -20,7 +21,7 @@ export default class ShadowsocksUdpClient extends EventEmitter {
         private targetPort: number,
     ) {
         super();
-        this.method = new RC4MD5(password);
+        this.method = SSCrypto.createCryptoMethodObject(method, password);
         this.header = ShadowsocksFormatter.build({
             version: isIPv4 ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
             address: this.targetHost,

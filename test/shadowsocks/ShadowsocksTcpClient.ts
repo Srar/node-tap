@@ -1,8 +1,7 @@
-import * as net from "net";
-import * as EventEmitter from "events";
-import { Socket } from "net";
+import * as net from "net"
+import * as EventEmitter from "events"
 
-import RC4MD5 from "./crypto/RC4MD5";
+import SSCrypto from "./crypto/SSCrypto"
 import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter"
 
 export default class ShadowsocksTcpClient extends EventEmitter {
@@ -23,7 +22,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         private targetPort: number = 0,
     ) {
         super();
-        this.method = new RC4MD5(password);
+        this.method = SSCrypto.createCryptoMethodObject(method, password);
         this.socket.setNoDelay(true);
     }
 
@@ -56,7 +55,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
             version: this.isIpv4Address ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
             address: this.targetHost,
             port: this.targetPort
-        }); 
+        });
         this.socket.write(this.method.encryptData(headerBuffer));
         for (let buffer of this.buffersCache) this.socket.write(this.method.encryptData(buffer));
         this.buffersCache = [];

@@ -11,7 +11,6 @@ import Ipip from "../Ipip"
 import ConnectionManager from "../ConnectionManager"
 import UdpPacketFormatter from "../formatters/UdpPacketFormatter"
 import ShadowsocksUdpClient from "../shadowsocks/ShadowsocksUdpClient"
-import RC4MD5 from "../shadowsocks/crypto/RC4MD5";
 
 interface UdpConnection {
     onFree?: Function
@@ -88,7 +87,8 @@ export default function (data: Buffer, write: Function, next: Function) {
             udpClient: new ShadowsocksUdpClient(
                 Config.get("ShadowsocksUdpHost"),
                 Config.get("ShadowsocksUdpPort"),
-                Config.get("ShadowsocksUdpPasswd"), "RC4MD5",
+                Config.get("ShadowsocksUdpPasswd"), 
+                Config.get("ShadowsocksUdpMethod"),
                 PacketUtils.isIPv4(data),
                 udpPacket.destinationIp,
                 udpPacket.destinationPort,

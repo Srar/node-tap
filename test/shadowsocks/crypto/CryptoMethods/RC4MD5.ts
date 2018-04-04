@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
-import CryptoTools from "./CryptoTools";
-import ICryptoKeyIV from "./ICryptoKeyIV";
-import ISSCryptoMethod from "./ISSCryptoMethod"
+import CryptoTools from "../CryptoTools";
+import ICryptoKeyIV from "../ICryptoKeyIV";
+import ISSCryptoMethod from "../ISSCryptoMethod"
 
 export default class RC4MD5 implements ISSCryptoMethod {
 

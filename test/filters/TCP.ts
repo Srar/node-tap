@@ -71,7 +71,7 @@ class TcpServerSession extends EventEmitter {
             Config.get("ShadowsocksTcpHost"),
             Config.get("ShadowsocksTcpPort"),
             Config.get("ShadowsocksTcpPasswd"),
-            "RC4MD5"
+            Config.get("ShadowsocksTcpMethod"),
         );
     }
 
