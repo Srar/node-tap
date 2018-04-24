@@ -61,7 +61,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     }
 
     /* unsupported large udp packet now. */
-    if (data.length > 1410) return;
+    if (data.length > 1400) return;
 
     var udpPacket: UdpPacket = UdpPacketFormatter.format(data);
 

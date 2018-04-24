@@ -13,6 +13,7 @@ const TAG_SIZE = 16;
 const MIN_CHUNK_LEN = TAG_SIZE * 2 + 3;
 const MIN_CHUNK_SPLIT_LEN = 0x0800;
 const MAX_CHUNK_SPLIT_LEN = 0x3FFF;
+const INFO_STR = "ss-subkey";
 
 /**
  * calculate the HMAC from key and message
@@ -131,7 +132,7 @@ export default class AEADCryotoProcess {
         let salt = null;
         if (this.cipherKey === null) {
             salt = crypto.randomBytes(this.saltLength);
-            this.cipherKey = HKDF("sha1", salt, this.cryptoKeyIV.key, "ss-subkey", this.keyLength);
+            this.cipherKey = HKDF("sha1", salt, this.cryptoKeyIV.key, INFO_STR, this.keyLength);
         }
         const chunks = getRandomChunks(data, MIN_CHUNK_SPLIT_LEN, MAX_CHUNK_SPLIT_LEN).map((chunk) => {
             const dataLen = numberToBuffer(chunk.length);
@@ -156,7 +157,7 @@ export default class AEADCryotoProcess {
                 return null;
             }
             let salt = this.dataCache.slice(0, this.saltLength);
-            this.decipherKey = HKDF("sha1", salt, this.cryptoKeyIV.key, "ss-subkey", this.keyLength);
+            this.decipherKey = HKDF("sha1", salt, this.cryptoKeyIV.key, INFO_STR, this.keyLength);
             this.dataCache = this.dataCache.slice(this.saltLength);
             return this.decryptData();
         }
@@ -230,15 +231,12 @@ export default class AEADCryotoProcess {
 
     private encrypt(data: Buffer): [Buffer, Buffer] {
         const nonce = numberToBuffer(this.cipherNonce, this.nonceLength, false);
-        let ciphertext = null;
-        let tag = null;
         const cipher: crypto.Cipher = crypto.createCipheriv(this.cryptoName, this.cipherKey, nonce);
-        ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
-        tag = cipher.getAuthTag();
+        const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
+        const tag = cipher.getAuthTag();
         this.cipherNonce++;
         return [ciphertext, tag];
     }
-
 
     private decrypt(data: Buffer, tag: any): Buffer {
         const nonce = numberToBuffer(this.decipherNonce, this.nonceLength, false);
@@ -253,5 +251,35 @@ export default class AEADCryotoProcess {
         if (this.decipherNonce > 0) {
             this.decipherNonce--;
         }
+    }
+
+    public encryptDataWithoutStream(data: Buffer): Buffer {
+        const salt: Buffer = crypto.randomBytes(this.saltLength);
+        const cipherKey: Buffer = HKDF("sha1", salt, this.cryptoKeyIV.key, INFO_STR, this.keyLength);
+        const nonce = numberToBuffer(0, this.nonceLength, false);
+    
+        const cipher: crypto.Cipher = crypto.createCipheriv(this.cryptoName, cipherKey, nonce);
+        const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
+        const tag = cipher.getAuthTag();
+ 
+        return Buffer.concat([salt, ciphertext, tag]);
+    }
+
+    public decryptDataWithoutStream(data: Buffer): Buffer {
+        if (data.length < this.saltLength) {
+            throw new Error("Too short salt.");
+        }
+        const salt = data.slice(0, this.saltLength);
+        const decipherKey = HKDF("sha1", salt, this.cryptoKeyIV.key, INFO_STR, this.keyLength);
+        if (data.length < this.saltLength + TAG_SIZE + 1) {
+            throw new Error("Too short verify data.");
+        }
+        const [encData, dataTag] = [data.slice(this.saltLength, -TAG_SIZE), data.slice(-TAG_SIZE)];
+        
+        const nonce = numberToBuffer(0, this.nonceLength, false);
+        const decipher = crypto.createDecipheriv(this.cryptoName, decipherKey, nonce);
+        decipher.setAuthTag(dataTag);
+
+        return Buffer.concat([decipher.update(encData), decipher.final()]);
     }
 }

@@ -40,11 +40,11 @@ export default class AES256GCM implements ISSCryptoMethod {
     }
 
     public encryptDataWithoutStream(data: Buffer): Buffer {
-        return null;
+        return this.cryptoProcess.encryptDataWithoutStream(data);
     }
 
     public decryptDataWithoutStream(data: Buffer): Buffer {
-        return null;
+        return this.cryptoProcess.decryptDataWithoutStream(data);
     }
 
     public getCryptoName(): string {

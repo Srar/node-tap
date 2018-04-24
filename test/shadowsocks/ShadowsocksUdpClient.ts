@@ -38,9 +38,12 @@ export default class ShadowsocksUdpClient extends EventEmitter {
     }
 
     public data(data: Buffer) {
-        data = this.method.decryptDataWithoutStream(data);
-        var payload = ShadowsocksFormatter.format(data).payload;
-        this.emit("data", payload);
+        try {
+            data = this.method.decryptDataWithoutStream(data);
+            this.emit("data", ShadowsocksFormatter.format(data).payload);
+        } catch (error) {
+            this.emit("error", error);
+        }
     }
 
     public close() {
