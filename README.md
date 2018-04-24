@@ -38,7 +38,7 @@
 
 > 启动添加路由时出现`对象已存在`或`找不到元素`为正常现象.
 
-> 目前仅支持 `rc4-md5`, `aes-256-cfb` 加密方式.
+> 目前支持 `rc4-md5`, `aes-256-cfb`, `aes-128-gcm`, `aes-192-gcm`, `aes-256-gcm` 加密方式.
 
 如果已经成功运行你应该会看到以下信息:
 ![snapshort.png](https://i.loli.net/2018/03/31/5abf7da82d4d1.png)
@@ -54,3 +54,4 @@
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))
 * [badvpn](https://github.com/ambrop72/badvpn)
 * [gotun2socks](https://github.com/yinghuocho/gotun2socks)
+* [blinksocks](https://github.com/blinksocks/blinksocks)

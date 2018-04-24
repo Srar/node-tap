@@ -75,12 +75,18 @@ export default class ShadowsocksTcpClient extends EventEmitter {
 
     public pause(p: boolean = true) {
         if (this.isConnected) {
-            // console.log("pause", p);
             p ? this.socket.pause() : this.socket.resume();
         }
     }
 
     private onData(data) {
-        this.emit("data", this.method.decryptData(data));
+        try {
+            var decryptedData = this.method.decryptData(data);
+            if (decryptedData) {
+                this.emit("data", decryptedData);
+            }
+        } catch (error) {
+            this.socket.emit("error", error);
+        }
     }
 }
