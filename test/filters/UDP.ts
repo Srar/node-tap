@@ -10,13 +10,11 @@ import {
 import Ipip from "../Ipip"
 import ConnectionManager from "../ConnectionManager"
 import UdpPacketFormatter from "../formatters/UdpPacketFormatter"
-import DeviceConfiguration from "../DeviceConfiguration"
-import RC4MD5 from "../shadowsocks/crypto/RC4MD5";
+import ShadowsocksUdpClient from "../shadowsocks/ShadowsocksUdpClient"
 
 interface UdpConnection {
-    crypto?: any,
     onFree?: Function
-    udpClient: dgram.Socket,
+    udpClient: ShadowsocksUdpClient,
     sourceAddress: Buffer,
     sourceIp: Buffer,
     sourcePort: number,
@@ -63,7 +61,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     }
 
     /* unsupported large udp packet now. */
-    if (data.length > 1410) return;
+    if (data.length > 1400) return;
 
     var udpPacket: UdpPacket = UdpPacketFormatter.format(data);
 
@@ -78,7 +76,6 @@ export default function (data: Buffer, write: Function, next: Function) {
 
     if (connection == null) {
         var isClosed: boolean = false;
-        var udpClient = dgram.createSocket("udp4");
         connection = {
             identification: 100,
             sourceAddress: udpPacket.sourceAddress,
@@ -87,39 +84,35 @@ export default function (data: Buffer, write: Function, next: Function) {
             targetIp: udpPacket.sourceIp,
             sourcePort: udpPacket.destinationPort,
             targetPort: udpPacket.sourcePort,
-            crypto: new RC4MD5(Config.get("ShadowsocksUdpPasswd")),
-            udpClient: udpClient,
+            udpClient: new ShadowsocksUdpClient(
+                Config.get("ShadowsocksUdpHost"),
+                Config.get("ShadowsocksUdpPort"),
+                Config.get("ShadowsocksUdpPasswd"), 
+                Config.get("ShadowsocksUdpMethod"),
+                PacketUtils.isIPv4(data),
+                udpPacket.destinationIp,
+                udpPacket.destinationPort,
+            ),
             onFree: function () {
                 if (isClosed) return;
                 isClosed = true;
-                udpClient.close();
+                connection.udpClient.close();
             }
         };
-        udpClient.on("message", (data) => {
-            data = connection.crypto.decryptDataWithoutStream(data)
-            var udpPacket: Buffer = buildUdpPacket(connection, data.slice(7));
+        connection.udpClient.on("data", (data) => {
+            var udpPacket: Buffer = buildUdpPacket(connection, data);
             connections.get(connectionId);
             write(udpPacket);
         });
-        udpClient.once("close", () => {
+        connection.udpClient.on("error", (err) => {
             isClosed = true;
-            udpClient.removeAllListeners();
+            connection.udpClient.removeAllListeners();
             connections.remove(connectionId);
-        })
+        });
         connections.add(connectionId, connection);
     }
 
-    var header = Buffer.allocUnsafe(7);
-    header[0] = 0x01;
-    header[1] = udpPacket.destinationIp[0];
-    header[2] = udpPacket.destinationIp[1];
-    header[3] = udpPacket.destinationIp[2];
-    header[4] = udpPacket.destinationIp[3];
-    header[5] = ((udpPacket.destinationPort >> 8) & 0xff);
-    header[6] = (udpPacket.destinationPort & 0xff);
-
-    var bufs: Buffer = connection.crypto.encryptDataWithoutStream(Buffer.concat([header, udpPacket.payload]))
-    connection.udpClient.send(bufs, 0, bufs.length, Config.get("ShadowsocksUdpPort"), Config.get("ShadowsocksUdpHost"), function () { });
+    connection.udpClient.write(udpPacket.payload);
 }
 
 
