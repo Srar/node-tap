@@ -5,6 +5,7 @@ import * as dns from "dns"
 import Config from "./Config"
 import { promisify } from "util"
 import * as iconv from "iconv-lite"
+import TAPControl from "./TAPControl"
 import * as cprocess from "child_process"
 import * as NativeTypes from "./NativeTypes"
 import DeviceConfiguration from "./DeviceConfiguration"
@@ -29,20 +30,6 @@ const optimist = require("optimist")
     .default("dns", "8.8.8.8")
     .default("skipdns", "false")
 const argv = optimist.argv;
-
-
-const TAP_IOCTL_GET_MTU = CTL_CODE(0x00000022, 3, 0, 0);
-const TAP_IOCTL_SET_MEDIA_STATUS = CTL_CODE(0x00000022, 6, 0, 0);
-const TAP_WIN_IOCTL_CONFIG_DHCP_MASQ = CTL_CODE(0x00000022, 7, 0, 0);
-const TAP_WIN_IOCTL_CONFIG_DHCP_SET_OPT = CTL_CODE(0x00000022, 9, 0, 0);
-const TAP_IOCTL_CONFIG_TUN = CTL_CODE(0x00000022, 10, 0, 0);
-
-const TRUE = new Buffer([0x01, 0x00, 0x00, 0x00]);
-const FALSE = new Buffer([0x00, 0x00, 0x00, 0x00]);
-
-function CTL_CODE(deviceType, func, method, access) {
-    return ((deviceType) << 16) | ((access) << 14) | ((func) << 2) | (method)
-}
 
 async function main() {
 
@@ -107,7 +94,7 @@ async function main() {
         argv.udppasswd == undefined ? Config.set("ShadowsocksUdpPasswd", argv.passwd) : Config.set("ShadowsocksUdpPasswd", argv.udppasswd);
         argv.udpmethod == undefined ? Config.set("ShadowsocksUdpMethod", argv.method) : Config.set("ShadowsocksUdpMethod", argv.udpmethod);
 
-        if (Config.get("ShadowsocksTcpHost") == undefined || 
+        if (Config.get("ShadowsocksTcpHost") == undefined ||
             Config.get("ShadowsocksUdpHost") == undefined ||
             Config.get("ShadowsocksTcpMethod") == undefined ||
             Config.get("ShadowsocksUdpMethod") == undefined) {
@@ -125,19 +112,13 @@ async function main() {
     }
 
     /* 设置OpenVPN网卡 */
-    var allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
-    var tunDevice: NativeTypes.DeviceInfo = null;
-    for (const device of allDevicesInfo) {
-        if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") != -1) {
-            tunDevice = device;
-        }
-    }
-
-    var deviceHandle: number = native.N_CreateDeviceFile(tunDevice.name);
-    native.N_DeviceControl(deviceHandle, TAP_IOCTL_SET_MEDIA_STATUS, TRUE, 32);
+    const tapControl: TAPControl = TAPControl.init();
+    const tapInfo = tapControl.getAdapterInfo();
+    tapControl.enable();
 
     /* 获取默认网卡 */
-    var deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
+    const allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
+    const deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
     var deafultDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
         if (device.gatewayIpAddress == deafultGateway) {
@@ -152,10 +133,10 @@ async function main() {
 
     /* 设置路由表 */
     var initCommands: Array<Array<string>> = [
-        ["netsh", "interface", "ipv4", "set", "interface", `${tunDevice.index}`, "metric=1"],
-        ["netsh", "interface", "ipv6", "set", "interface", `${tunDevice.index}`, "metric=1"],
-        ["netsh", "interface", "ipv4", "set", "dnsservers", `${tunDevice.index}`, "static", Config.get("DNS"), "primary"],
-        ["netsh", "interface", "ip", "set", "address", `name=${tunDevice.index}`, "static",
+        ["netsh", "interface", "ipv4", "set", "interface", `${tapInfo.index}`, "metric=1"],
+        ["netsh", "interface", "ipv6", "set", "interface", `${tapInfo.index}`, "metric=1"],
+        ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", Config.get("DNS"), "primary"],
+        ["netsh", "interface", "ip", "set", "address", `name=${tapInfo.index}`, "static",
             DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
         ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
         ["route", "delete", Config.get("DNS")],
@@ -174,7 +155,7 @@ async function main() {
         process.stdout.write(command.join(" ") + " ");
         var result = cprocess.spawnSync(command[0], command.slice(1), { timeout: 1000 * 5 });
         var errorMessage: string = iconv.decode(result.stderr, "cp936").toString().trim();
-        if(errorMessage.length != 0) process.stderr.write(errorMessage);
+        if (errorMessage.length != 0) process.stderr.write(errorMessage);
         process.stdout.write("\n");
     });
 
@@ -184,7 +165,7 @@ async function main() {
             dwForwardMask: "0.0.0.0",
             dwForwardPolicy: 0,
             dwForwardNextHop: DeviceConfiguration.GATEWAY_IP_ADDRESS,
-            dwForwardIfIndex: tunDevice.index,
+            dwForwardIfIndex: tapInfo.index,
             dwForwardType: NativeTypes.IpforwardEntryType.MIB_IPROUTE_TYPE_INDIRECT,
             dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
             dwForwardAge: 0,
@@ -208,26 +189,13 @@ async function main() {
     filters.push(require("./filters/ARP").default);
     filters.push(require("./filters/TimesUDP").default);
 
-    var rwProcess = new native.RwEventProcess(deviceHandle);
-    var read = function () {
-        return new Promise((resolve, reject) => {
-            rwProcess.read(function (err, data) {
-                err ? reject(err) : resolve(data);
-            });
-        });
-    }
-
-    var write = function (data: Buffer) {
-        rwProcess.writeSync(data);
-    }
-
     async function loop() {
-        var data: Buffer = <Buffer>await read();
+        var data: Buffer = <Buffer>await tapControl.read();
         var index: number = 0;
         function next() {
             var func = filters[index++];
             if (func == undefined) return;
-            func(data, write, next);
+            func(data, (data) => tapControl.write(data), next);
         }
         next();
         return setImmediate(loop);
