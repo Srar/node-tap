@@ -50,6 +50,19 @@
 ![snapshort.png](https://i.loli.net/2018/03/31/5abf8255372bd.png)
 > 该图来源: [http://blog.ucloud.cn/archives/3115](http://blog.ucloud.cn/archives/3115)
 
+# 常见问题
+Q: 启动过程中出现`The specified module could not be found`.
+
+A: 重新安装`npcap`, 在`Installation Opentions`勾选`Install Npcap in WinPcap API-compatible Mode`.
+
+Q: 启动过程中出现`create ip forward entry result: ERROR code: 5`.
+
+A: 使用管理员权限运行.
+
+Q: 目前是否支持不转发UDP?
+
+A: 不支持.
+
 # 参考
 * [net-speeder](https://github.com/snooda/net-speeder)
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))
