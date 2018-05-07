@@ -63,6 +63,10 @@ Q: 目前是否支持不转发UDP?
 
 A: 不支持.
 
+Q: 参数内`TCP`与`UDP`作用.
+
+A: 参数内`TCP`/`UDP`参数是针对`TCP`/`UDP`不同协议跑不同SS服务器所设计的. 如果您不需要协议单独分流那么只需要指定`host`, `port`, `passwd`, `method`即可.
+
 # 参考
 * [net-speeder](https://github.com/snooda/net-speeder)
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))
