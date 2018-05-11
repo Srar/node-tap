@@ -56,6 +56,22 @@ export default {
         return false;
     },
 
+
+    calculatenNetMask: function (netmask: number): string {
+        if (netmask === 32) return "255.255.255.255";
+        let calculatenCounter = netmask;
+        let result: number = 0;
+        for (let i = 31; i > 0; i--) {
+            if (calculatenCounter-- > 0) {
+                result |= 1;
+            }
+            result = result << 1;
+        }
+        let buf = Buffer.allocUnsafe(4);
+        buf.writeInt32BE(result, 0);
+        return `${buf[0].toString(10)}.${buf[1].toString(10)}.${buf[2].toString(10)}.${buf[3].toString(10)}`
+    },
+
     isBroadCast: function (bufs): boolean {
         for (var i = 0; i < 6; i++) {
             if (bufs[i] != 0xff) {
