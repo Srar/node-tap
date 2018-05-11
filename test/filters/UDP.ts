@@ -7,7 +7,6 @@ import {
     UdpPacket,
     IpProtocol,
 } from "../PacketsStruct"
-import Ipip from "../Ipip"
 import ConnectionManager from "../ConnectionManager"
 import UdpPacketFormatter from "../formatters/UdpPacketFormatter"
 import ShadowsocksUdpClient from "../shadowsocks/ShadowsocksUdpClient"
@@ -65,11 +64,10 @@ export default function (data: Buffer, write: Function, next: Function) {
 
     var udpPacket: UdpPacket = UdpPacketFormatter.format(data);
 
-    var location: string = Ipip.find(PacketUtils.ipAddressToString(udpPacket.destinationIp))[0];
-    if (location.length === 4 && location[0] === '保' && location[1] === '留' && location[2] === '地' && location[3] === '址') {
+    if(PacketUtils.isPrivateIpAddress(udpPacket.destinationIp)) {
         return next();
     }
-
+    
     var connectionId: string = PacketUtils.getConnectionId(udpPacket);
 
     var connection: UdpConnection = connections.get(connectionId);
@@ -87,7 +85,7 @@ export default function (data: Buffer, write: Function, next: Function) {
             udpClient: new ShadowsocksUdpClient(
                 Config.get("ShadowsocksUdpHost"),
                 Config.get("ShadowsocksUdpPort"),
-                Config.get("ShadowsocksUdpPasswd"), 
+                Config.get("ShadowsocksUdpPasswd"),
                 Config.get("ShadowsocksUdpMethod"),
                 PacketUtils.isIPv4(data),
                 udpPacket.destinationIp,

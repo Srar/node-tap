@@ -10,8 +10,6 @@ import * as cprocess from "child_process"
 import * as NativeTypes from "./NativeTypes"
 import DeviceConfiguration from "./DeviceConfiguration"
 
-import Ipip from "./Ipip"
-
 const optimist = require("optimist")
     .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --passwd [shadowsocks password] --xtudp [x times udp packets]")
     .default("xtudp", 1)
@@ -173,14 +171,6 @@ async function main() {
             dwForwardMetric1: 2,
         })
         console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
-    }
-
-    if (fs.existsSync(`${__dirname}/17monipdb.dat`)) {
-        Ipip.load(`${__dirname}/17monipdb.dat`);
-    } else if (fs.existsSync(`17monipdb.dat`)) {
-        Ipip.load(`17monipdb.dat`);
-    } else {
-        throw new Error("Can't found ip database.");
     }
 
     var filters: Array<Function> = [];
