@@ -132,6 +132,27 @@ async function main() {
     Config.set("DefaultIp", deafultDevice.currentIpAddress);
     Config.set("DefaultGateway", deafultDevice.gatewayIpAddress);
 
+    /* 清理上次运行所留下的路由表 */
+    {
+        const routes = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry());
+        for (const route of routes) {
+            if (route.interfaceIndex !== tapInfo.index) continue;
+            let code = native.N_DeleteIpforwardEntry({
+                dwForwardDest: route.destIp,
+                dwForwardMask: route.netMask,
+                dwForwardPolicy: route.proto,
+                dwForwardNextHop: route.nextHop,
+                dwForwardIfIndex: route.interfaceIndex,
+                dwForwardType: route.type,
+                dwForwardAge: route.age,
+                dwForwardMetric1: route.metric1
+            });
+            if (code !== 0) {
+                console.log(`Route deletion failed. Code: ${code}. Route: ${route.destIp}/${route.netMask}`);
+            }
+        }
+    }
+
     /* 设置路由表 */
     {
         let initCommands: Array<Array<string>> = [
@@ -140,7 +161,9 @@ async function main() {
             ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", Config.get("DNS"), "primary"],
             ["netsh", "interface", "ip", "set", "address", `name=${tapInfo.index}`, "static",
                 DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
+            ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
             ["route", "delete", Config.get("DNS")],
+
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
             ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
         ];
@@ -160,31 +183,10 @@ async function main() {
         });
     }
 
-    /* 清理上次运行所留下的路由表 */
-    {
-        const routes = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry());
-        for (const route of routes) {
-            if (route.interfaceIndex !== tapInfo.index) continue;
-            let code = native.N_DeleteIpforwardEntry({
-                dwForwardDest: route.destIp,
-                dwForwardMask: route.netMask,
-                dwForwardPolicy: route.proto,
-                dwForwardNextHop: route.nextHop,
-                dwForwardIfIndex: route.interfaceIndex,
-                dwForwardType: route.type,
-                dwForwardAge: route.age,
-                dwForwardMetric1: route.metric1
-            });
-            if(code !== 0) {
-                console.log(`Route deletion failed. Code: ${code}. Route: ${route.destIp}/${route.netMask}`);
-            }
-        }
-    }
-
     // 添加自定义路由表
     {
-        let routes: Array<Array<string>> = [];
-
+        let routes: Array<Array<string | number>> = [];
+        
         let cidrList: Array<string> = [];
 
         if (fs.existsSync(argv.routes)) {
@@ -198,16 +200,16 @@ async function main() {
             cidr = cidr.trim();
             const [ip, range] = cidr.split("/");
             const netmask: string = PacketUtils.calculatenNetMask(parseInt(range));
-            routes.push([ip, netmask]);
+            routes.push([ip, netmask, DeviceConfiguration.GATEWAY_IP_ADDRESS]);
         }
 
         for (let route of routes) {
-            const [ip, netmask] = route;
+            const [ip, netmask, gateway] = route;
             const code: number = native.N_CreateIpforwardEntry({
                 dwForwardDest: ip,
                 dwForwardMask: netmask,
                 dwForwardPolicy: 0,
-                dwForwardNextHop: DeviceConfiguration.GATEWAY_IP_ADDRESS,
+                dwForwardNextHop: gateway,
                 dwForwardIfIndex: tapInfo.index,
                 dwForwardType: NativeTypes.IpforwardEntryType.MIB_IPROUTE_TYPE_INDIRECT,
                 dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
@@ -215,10 +217,10 @@ async function main() {
                 dwForwardNextHopAS: 0,
                 dwForwardMetric1: 2,
             });
-            if(code !== 0) {
+            if (code !== 0) {
                 console.log(`Route addition failed. Code: ${code}. Route: ${ip}/${netmask}`);
             }
-           
+
         }
     }
 
