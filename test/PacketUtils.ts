@@ -7,7 +7,70 @@ import {
     UdpPacket
 } from "./PacketsStruct"
 
+let privateIpAddressRangeCache: Array<Array<number>> = [];
+
 export default {
+
+    isPrivateIpAddress: function (ip: string | Buffer): boolean {
+        if (privateIpAddressRangeCache.length == 0) {
+            const privateIpAddress = [
+                "10.0.0.0/8",
+                "100.64.0.0/10",
+                "127.0.0.0/8",
+                "169.254.0.0/16",
+                "172.16.0.0/12",
+                "192.0.0.0/24",
+                "192.0.2.0/24",
+                "192.88.99.0/24",
+                "192.168.0.0/16",
+                "198.18.0.0/15",
+                "198.51.100.0/24",
+                "203.0.113.0/24",
+                "224.0.0.0/4",
+                "255.255.255.255/32"
+            ];
+            for (let ipRange of privateIpAddress) {
+                const ip = ipRange.substring(0, ipRange.indexOf("/"));
+                const ipArray = new Buffer(ip.split("."));
+                if (ipArray.length !== 4) continue;
+                const ipLong = ipArray.readInt32BE(0);
+                const netmask = parseInt(ipRange.substring(ipRange.indexOf("/") + 1, ipRange.length));
+                const range = 2 << (32 - netmask - 1);
+                privateIpAddressRangeCache.push([ipLong, ipLong + range])
+            }
+        }
+
+        let ipLong = -1;
+        if (typeof ip === "string") {
+            let ipBuffer = new Buffer(ip.split("."));
+            let ipLong = ipBuffer.readInt32BE(0);
+        } else {
+            ipLong = ip.readInt32BE(0);
+        }
+        for (let item of privateIpAddressRangeCache) {
+            let [start, end] = item;
+            if (ipLong >= start && ipLong <= end) {
+                return true;
+            }
+        }
+        return false;
+    },
+
+
+    calculatenNetMask: function (netmask: number): string {
+        if (netmask === 32) return "255.255.255.255";
+        let calculatenCounter = netmask;
+        let result: number = 0;
+        for (let i = 31; i > 0; i--) {
+            if (calculatenCounter-- > 0) {
+                result |= 1;
+            }
+            result = result << 1;
+        }
+        let buf = Buffer.allocUnsafe(4);
+        buf.writeInt32BE(result, 0);
+        return `${buf[0].toString(10)}.${buf[1].toString(10)}.${buf[2].toString(10)}.${buf[3].toString(10)}`
+    },
 
     isBroadCast: function (bufs): boolean {
         for (var i = 0; i < 6; i++) {
@@ -57,7 +120,7 @@ export default {
         return value;
     },
 
-    getConnectionId: function(packet: TcpPacket | UdpPacket): string {
+    getConnectionId: function (packet: TcpPacket | UdpPacket): string {
         var sourceIp: string = this.ipAddressToString(packet.sourceIp);
         var destinationIp: string = this.ipAddressToString(packet.destinationIp);
         return `${sourceIp}:${packet.sourcePort}-${destinationIp}:${packet.destinationPort}`;

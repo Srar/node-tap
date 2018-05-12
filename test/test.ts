@@ -3,14 +3,14 @@ const native = require("../index.js");
 import * as fs from "fs"
 import * as dns from "dns"
 import Config from "./Config"
+import * as path from "path"
 import { promisify } from "util"
 import * as iconv from "iconv-lite"
 import TAPControl from "./TAPControl"
+import PacketUtils from "./PacketUtils"
 import * as cprocess from "child_process"
 import * as NativeTypes from "./NativeTypes"
 import DeviceConfiguration from "./DeviceConfiguration"
-
-import Ipip from "./Ipip"
 
 const optimist = require("optimist")
     .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --passwd [shadowsocks password] --xtudp [x times udp packets]")
@@ -29,6 +29,8 @@ const optimist = require("optimist")
     .default("udpmethod", undefined)
     .default("dns", "8.8.8.8")
     .default("skipdns", "false")
+    .default("routes", "0.0.0.0/0")
+
 const argv = optimist.argv;
 
 async function main() {
@@ -112,75 +114,127 @@ async function main() {
     }
 
     /* 设置OpenVPN网卡 */
+    if(!TAPControl.checkAdapterIsInstalled()) {
+        console.log("Installing driver...");
+        const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
+        if(result !== 0) {
+            console.error(`Driver was not successfully installed. Exit code: ${result}.`);
+            if(result === 2) {
+                console.log(`Please run as administrator.`);
+            }
+            process.exit(-1);
+        }
+        console.log("Install driver successfully.");
+    }
     const tapControl: TAPControl = TAPControl.init();
     const tapInfo = tapControl.getAdapterInfo();
     tapControl.enable();
 
     /* 获取默认网卡 */
     const allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
-    const deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
-    var deafultDevice: NativeTypes.DeviceInfo = null;
+    const defaultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
+    var defaultDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
-        if (device.gatewayIpAddress == deafultGateway) {
-            deafultDevice = device;
+        if (device.gatewayIpAddress == defaultGateway) {
+            defaultDevice = device;
         }
     }
-    if (deafultDevice == null) {
+    if (defaultDevice == null) {
         throw new Error("无法找到默认网卡.");
     }
-    Config.set("DefaultIp", deafultDevice.currentIpAddress);
-    Config.set("DefaultGateway", deafultDevice.gatewayIpAddress);
+    Config.set("DefaultIp", defaultDevice.currentIpAddress);
+    Config.set("DefaultGateway", defaultDevice.gatewayIpAddress);
+
+    /* 清理上次运行所留下的路由表 */
+    {
+        const routes = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry());
+        for (const route of routes) {
+            if (route.interfaceIndex !== tapInfo.index) continue;
+            let code = native.N_DeleteIpforwardEntry({
+                dwForwardDest: route.destIp,
+                dwForwardMask: route.netMask,
+                dwForwardPolicy: route.proto,
+                dwForwardNextHop: route.nextHop,
+                dwForwardIfIndex: route.interfaceIndex,
+                dwForwardType: route.type,
+                dwForwardAge: route.age,
+                dwForwardMetric1: route.metric1
+            });
+            if (code !== 0) {
+                console.log(`Route deletion failed. Code: ${code}. Route: ${route.destIp}/${route.netMask}`);
+            }
+        }
+    }
 
     /* 设置路由表 */
-    var initCommands: Array<Array<string>> = [
-        ["netsh", "interface", "ipv4", "set", "interface", `${tapInfo.index}`, "metric=1"],
-        ["netsh", "interface", "ipv6", "set", "interface", `${tapInfo.index}`, "metric=1"],
-        ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", Config.get("DNS"), "primary"],
-        ["netsh", "interface", "ip", "set", "address", `name=${tapInfo.index}`, "static",
-            DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
-        ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
-        ["route", "delete", Config.get("DNS")],
-        ["route", "add", "10.1.1.11", "mask", "255.255.255.255", deafultGateway, "metric", "1"],
-        ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
-        ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
-    ];
-
-    if (Config.get("SkipDNS")) {
-        initCommands.push(
-            ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
-        );
-    }
-
-    initCommands.forEach(command => {
-        process.stdout.write(command.join(" ") + " ");
-        var result = cprocess.spawnSync(command[0], command.slice(1), { timeout: 1000 * 5 });
-        var errorMessage: string = iconv.decode(result.stderr, "cp936").toString().trim();
-        if (errorMessage.length != 0) process.stderr.write(errorMessage);
-        process.stdout.write("\n");
-    });
-
     {
-        let code: number = native.N_CreateIpforwardEntry({
-            dwForwardDest: "0.0.0.0",
-            dwForwardMask: "0.0.0.0",
-            dwForwardPolicy: 0,
-            dwForwardNextHop: DeviceConfiguration.GATEWAY_IP_ADDRESS,
-            dwForwardIfIndex: tapInfo.index,
-            dwForwardType: NativeTypes.IpforwardEntryType.MIB_IPROUTE_TYPE_INDIRECT,
-            dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
-            dwForwardAge: 0,
-            dwForwardNextHopAS: 0,
-            dwForwardMetric1: 2,
-        })
-        console.log("create ip forward entry result:", code == 0 ? "SUCCESS" : `ERROR code: ${code}`);
+        let initCommands: Array<Array<string>> = [
+            ["netsh", "interface", "ipv4", "set", "interface", `${tapInfo.index}`, "metric=1"],
+            ["netsh", "interface", "ipv6", "set", "interface", `${tapInfo.index}`, "metric=1"],
+            ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", Config.get("DNS"), "primary"],
+            ["netsh", "interface", "ip", "set", "address", `name=${tapInfo.index}`, "static",
+                DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
+            ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
+            ["route", "delete", Config.get("DNS")],
+
+            ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+            ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+        ];
+
+        if (Config.get("SkipDNS")) {
+            initCommands.push(
+                ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+            );
+        }
+
+        initCommands.forEach(command => {
+            process.stdout.write(command.join(" ") + " ");
+            const result = cprocess.spawnSync(command[0], command.slice(1), { timeout: 1000 * 5 });
+            const errorMessage: string = iconv.decode(result.stderr, "cp936").toString().trim();
+            if (errorMessage.length != 0) process.stderr.write(errorMessage);
+            process.stdout.write("\n");
+        });
     }
 
-    if (fs.existsSync(`${__dirname}/17monipdb.dat`)) {
-        Ipip.load(`${__dirname}/17monipdb.dat`);
-    } else if (fs.existsSync(`17monipdb.dat`)) {
-        Ipip.load(`17monipdb.dat`);
-    } else {
-        throw new Error("Can't found ip database.");
+    // 添加自定义路由表
+    {
+        let routes: Array<Array<string | number>> = [];
+        
+        let cidrList: Array<string> = [];
+
+        if (fs.existsSync(argv.routes)) {
+            const rawData = fs.readFileSync(argv.routes).toString();
+            cidrList = rawData.split("\n");
+        } else {
+            cidrList = argv.routes.split(",");
+        }
+
+        for (let cidr of cidrList) {
+            cidr = cidr.trim();
+            const [ip, range] = cidr.split("/");
+            const netmask: string = PacketUtils.calculatenNetMask(parseInt(range));
+            routes.push([ip, netmask]);
+        }
+
+        for (let route of routes) {
+            const [ip, netmask] = route;
+            const code: number = native.N_CreateIpforwardEntry({
+                dwForwardDest: ip,
+                dwForwardMask: netmask,
+                dwForwardPolicy: 0,
+                dwForwardNextHop: DeviceConfiguration.GATEWAY_IP_ADDRESS,
+                dwForwardIfIndex: tapInfo.index,
+                dwForwardType: NativeTypes.IpforwardEntryType.MIB_IPROUTE_TYPE_INDIRECT,
+                dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
+                dwForwardAge: 0,
+                dwForwardNextHopAS: 0,
+                dwForwardMetric1: 2,
+            });
+            if (code !== 0) {
+                console.log(`Route addition failed. Code: ${code}. Route: ${ip}/${netmask}`);
+            }
+
+        }
     }
 
     var filters: Array<Function> = [];
