@@ -3,6 +3,7 @@ const native = require("../index.js");
 import * as fs from "fs"
 import * as dns from "dns"
 import Config from "./Config"
+import * as path from "path"
 import { promisify } from "util"
 import * as iconv from "iconv-lite"
 import TAPControl from "./TAPControl"
@@ -113,24 +114,36 @@ async function main() {
     }
 
     /* 设置OpenVPN网卡 */
+    if(!TAPControl.checkAdapterIsInstalled()) {
+        console.log("Installing driver...");
+        const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
+        if(result !== 0) {
+            console.error(`Driver was not successfully installed. Exit code: ${result}.`);
+            if(result === 2) {
+                console.log(`Please run as administrator.`);
+            }
+            process.exit(-1);
+        }
+        console.log("Install driver successfully.");
+    }
     const tapControl: TAPControl = TAPControl.init();
     const tapInfo = tapControl.getAdapterInfo();
     tapControl.enable();
 
     /* 获取默认网卡 */
     const allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
-    const deafultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
-    var deafultDevice: NativeTypes.DeviceInfo = null;
+    const defaultGateway: string = (<Array<NativeTypes.IpforwardEntry>>native.N_GetIpforwardEntry())[0].nextHop;
+    var defaultDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
-        if (device.gatewayIpAddress == deafultGateway) {
-            deafultDevice = device;
+        if (device.gatewayIpAddress == defaultGateway) {
+            defaultDevice = device;
         }
     }
-    if (deafultDevice == null) {
+    if (defaultDevice == null) {
         throw new Error("无法找到默认网卡.");
     }
-    Config.set("DefaultIp", deafultDevice.currentIpAddress);
-    Config.set("DefaultGateway", deafultDevice.gatewayIpAddress);
+    Config.set("DefaultIp", defaultDevice.currentIpAddress);
+    Config.set("DefaultGateway", defaultDevice.gatewayIpAddress);
 
     /* 清理上次运行所留下的路由表 */
     {
@@ -164,13 +177,13 @@ async function main() {
             ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
             ["route", "delete", Config.get("DNS")],
 
-            ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
-            ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
+            ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+            ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
         ];
 
         if (Config.get("SkipDNS")) {
             initCommands.push(
-                ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", deafultGateway, "metric", "1"],
+                ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
             );
         }
 
@@ -200,16 +213,16 @@ async function main() {
             cidr = cidr.trim();
             const [ip, range] = cidr.split("/");
             const netmask: string = PacketUtils.calculatenNetMask(parseInt(range));
-            routes.push([ip, netmask, DeviceConfiguration.GATEWAY_IP_ADDRESS]);
+            routes.push([ip, netmask]);
         }
 
         for (let route of routes) {
-            const [ip, netmask, gateway] = route;
+            const [ip, netmask] = route;
             const code: number = native.N_CreateIpforwardEntry({
                 dwForwardDest: ip,
                 dwForwardMask: netmask,
                 dwForwardPolicy: 0,
-                dwForwardNextHop: gateway,
+                dwForwardNextHop: DeviceConfiguration.GATEWAY_IP_ADDRESS,
                 dwForwardIfIndex: tapInfo.index,
                 dwForwardType: NativeTypes.IpforwardEntryType.MIB_IPROUTE_TYPE_INDIRECT,
                 dwForwardProto: NativeTypes.IpforwardEntryProto.MIB_IPPROTO_NETMGMT,
