@@ -4,7 +4,7 @@ import ICryptoKeyIV from "./ICryptoKeyIV";
 export default class CryptoTools {
 
     public static generateKeyIVByPassword(passwordStr: string, keyLength: number, ivLength: number): ICryptoKeyIV {
-        var password: Buffer = new Buffer(passwordStr, "binary");
+        var password: Buffer = new Buffer(passwordStr.toString(), "binary");
         var hashBuffers: Array<Buffer> = [];
         for (var dataCount = 0, loopCount = 0; dataCount < keyLength + ivLength; loopCount++) {
             var data: any = password;
