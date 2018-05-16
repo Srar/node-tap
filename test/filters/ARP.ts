@@ -1,11 +1,4 @@
 import PacketUtils from "../PacketUtils"
-import {
-    BasePacket,
-    IpPacket,
-    TcpPacket,
-    IpProtocol,
-    ArpPacket
-} from "../PacketsStruct"
 import ArpPacketFormatter from "../formatters/ArpPacketFormatter"
 import DeviceConfiguration from "../DeviceConfiguration"
 

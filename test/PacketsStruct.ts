@@ -60,7 +60,19 @@ export interface IpPacket extends BasePacket {
     protocol?: IpProtocol,
     checksum?: number,
     sourceIp?: Buffer,
-    destinationIp?: Buffer
+    destinationIp?: Buffer,
+    tcpipPayload?: Buffer,
+}
+
+export interface Ipv6Packet extends BasePacket {
+    /* 4 bits version, 8 bits TC, 20 bits flow-ID */
+    flow?: number
+    payloadLength?: number,
+    protocol?: IpProtocol,
+    hopLimit?: number,
+    sourceIp?: Buffer,
+    destinationIp?: Buffer,
+    tcpipPayload?: Buffer,
 }
 
 export interface TcpPacket extends IpPacket {
