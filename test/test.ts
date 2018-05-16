@@ -115,16 +115,18 @@ async function main() {
 
     /* 设置OpenVPN网卡 */
     if(!TAPControl.checkAdapterIsInstalled()) {
-        console.log("Installing driver...");
-        const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
-        if(result !== 0) {
-            console.error(`Driver was not successfully installed. Exit code: ${result}.`);
-            if(result === 2) {
-                console.log(`Please run as administrator.`);
-            }
-            process.exit(-1);
-        }
-        console.log("Install driver successfully.");
+        // console.log("Installing driver...");
+        // const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
+        // if(result !== 0) {
+        //     console.error(`Driver was not successfully installed. Exit code: ${result}.`);
+        //     if(result === 2) {
+        //         console.log(`Please run as administrator.`);
+        //     }
+        //     process.exit(-1);
+        // }
+        // console.log("Install driver successfully.");
+        console.error("Please install openvpn tap driver.");
+        process.exit(-1);
     }
     const tapControl: TAPControl = TAPControl.init();
     const tapInfo = tapControl.getAdapterInfo();
