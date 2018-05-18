@@ -75,6 +75,15 @@ export interface Ipv6Packet extends BasePacket {
     tcpipPayload?: Buffer,
 }
 
+export interface Icmpv6Packet extends Ipv6Packet {
+    icmpv6type: number,
+    code: number,
+    checksum: number,
+    reserved: Buffer,
+    targetAddress: Buffer,
+    options?: Buffer,
+}
+
 export interface TcpPacket extends IpPacket {
     sourcePort?: number,
     destinationPort?: number,

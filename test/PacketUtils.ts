@@ -72,7 +72,7 @@ export default {
         return `${buf[0].toString(10)}.${buf[1].toString(10)}.${buf[2].toString(10)}.${buf[3].toString(10)}`
     },
 
-    isBroadCast: function (bufs): boolean {
+    isBroadCast: function (bufs: Buffer): boolean {
         for (var i = 0; i < 6; i++) {
             if (bufs[i] != 0xff) {
                 return false;
@@ -81,12 +81,16 @@ export default {
         return true;
     },
 
-    isARP: function (bufs): boolean {
+    isARP: function (bufs: Buffer): boolean {
         return bufs[12] == 0x08 && bufs[13] == 0x06
     },
 
-    isIPv4: function (bufs): boolean {
+    isIPv4: function (bufs: Buffer): boolean {
         return bufs[12] === 0x08 && bufs[13] === 0x00;
+    },
+
+    isIPv6: function (bufs: Buffer): boolean {
+        return bufs[12] === 0x86 && bufs[13] === 0xdd;
     },
 
     isTCP: function (bufs): boolean {
@@ -110,6 +114,20 @@ export default {
 
     ipAddressToString: function (bufs) {
         return `${bufs[0].toString(10)}.${bufs[1].toString(10)}.${bufs[2].toString(10)}.${bufs[3].toString(10)}`;
+    },
+
+    ipV6AddressToString: function (bufs: Buffer): string {
+        let str = "";
+        bufs.forEach((byte, index) => {
+            if (byte < 16) {
+                str += "0";
+            }
+            str += byte.toString(16);
+            if ((index + 1) % 2 === 0) {
+                str += ":";
+            }
+        })
+        return str.substring(0, str.length - 1);
     },
 
     increaseNumber: function (value: number, maximumValue: number): number {

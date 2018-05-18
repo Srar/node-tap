@@ -114,7 +114,7 @@ async function main() {
     }
 
     /* 设置OpenVPN网卡 */
-    if(!TAPControl.checkAdapterIsInstalled()) {
+    if (!TAPControl.checkAdapterIsInstalled()) {
         // console.log("Installing driver...");
         // const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
         // if(result !== 0) {
@@ -179,6 +179,9 @@ async function main() {
             ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
             ["route", "delete", Config.get("DNS")],
 
+            ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, "fd05:5dd5:b158:b23::5"],
+            ["netsh", "interface", "ipv6", "add", "route", "::/0", tapInfo.index, "fd05:5dd5:b158:b23::4"],
+
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
             ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
         ];
@@ -201,7 +204,7 @@ async function main() {
     // 添加自定义路由表
     {
         let routes: Array<Array<string | number>> = [];
-        
+
         let cidrList: Array<string> = [];
 
         if (fs.existsSync(argv.routes)) {
@@ -243,6 +246,7 @@ async function main() {
     filters.push(require("./filters/TCP").default);
     filters.push(require("./filters/UDP").default);
     filters.push(require("./filters/ARP").default);
+    filters.push(require("./filters/NDP").default);
     filters.push(require("./filters/TimesUDP").default);
 
     async function loop() {

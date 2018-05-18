@@ -144,6 +144,7 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             var packet: Ipv6Packet = {};
             packet.flow = bufferFormatter.readUInt32BE();
             packet.payloadLength = bufferFormatter.readUInt16BE();
+            packet.protocol = bufferFormatter.readByte();
             packet.hopLimit = bufferFormatter.readByte();
             packet.sourceIp = bufferFormatter.readBuffer(16);
             packet.destinationIp = bufferFormatter.readBuffer(16);
@@ -151,7 +152,7 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             packet = Object.assign(basePacket, packet);
             return <IpPacket>packet;
         } else {
-            throw new TypeError("Unsupport ethernet type.");
+            throw new TypeError(`Unsupported ethernet type: ${basePacket.type}`);
         }
     }
 }
