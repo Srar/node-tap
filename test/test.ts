@@ -217,7 +217,7 @@ async function main() {
         for (let cidr of cidrList) {
             cidr = cidr.trim();
             const [ip, range] = cidr.split("/");
-            const netmask: string = PacketUtils.calculatenNetMask(parseInt(range));
+            const netmask: string = PacketUtils.calculatenIpv4NetMask(parseInt(range));
             routes.push([ip, netmask]);
         }
 

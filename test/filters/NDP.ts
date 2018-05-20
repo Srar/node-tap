@@ -26,11 +26,11 @@ export default function (data: Buffer, write: Function, next: Function) {
         return next();
     }
 
-    if (PacketUtils.ipV6AddressToString(packet.sourceIp) !== "fd05:5dd5:b158:0b23:0000:0000:0000:0005") {
+    if (PacketUtils.ipv6ToString(packet.sourceIp) !== "fd05:5dd5:b158:0b23:0000:0000:0000:0005") {
         return next();
     }
 
-    if (PacketUtils.ipV6AddressToString(packet.targetAddress) !== "fd05:5dd5:b158:0b23:0000:0000:0000:0004") {
+    if (PacketUtils.ipv6ToString(packet.targetAddress) !== "fd05:5dd5:b158:0b23:0000:0000:0000:0004") {
         return next();
     }
 
@@ -39,8 +39,6 @@ export default function (data: Buffer, write: Function, next: Function) {
         gatewayMac[index] = parseInt(`0x${item}`);
     });
 
-    console.log(packet.sourceAddress, packet.destinaltionAddress);
-
     let responsePacket: Icmpv6Packet = { ...packet };
     responsePacket.sourceAddress = gatewayMac;
     responsePacket.destinaltionAddress = packet.options.slice(packet.options.length - 6);
@@ -48,7 +46,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     responsePacket.destinationIp = packet.sourceIp;
     responsePacket.icmpv6type = 136;
     responsePacket.reserved = new Buffer([0x06, 0x00, 0x00, 0x00]);
-    responsePacket.options = new Buffer([0x02, 0x01, ...responsePacket.destinaltionAddress]);
+    responsePacket.options = new Buffer([0x02, 0x01, ...gatewayMac]);
 
     const responseBuffer: Buffer = Icmpv6Formatter.build(responsePacket);
 

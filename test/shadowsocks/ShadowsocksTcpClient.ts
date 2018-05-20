@@ -18,7 +18,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         private port: number,
         password: string, method: string,
         private isIpv4Address: boolean = true,
-        private targetHost: string = "",
+        private targetHost: Buffer = Buffer.allocUnsafe(0),
         private targetPort: number = 0,
     ) {
         super();
@@ -26,13 +26,13 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         this.socket.setNoDelay(true);
     }
 
-    public connect(isIpv4Address: boolean, targetHost?: string, targetPort?: number) {
+    public connect(isIpv4Address: boolean, targetHost?: Buffer, targetPort?: number) {
         this.socket.on("data", this.onData.bind(this));
         this.socket.on("error", this.disconnect.bind(this));
         this.socket.connect(this.port, this.host, this.onConnected.bind(this));
         if (targetHost) this.targetHost = targetHost;
         if (targetPort) this.targetPort = targetPort;
-        if (isIpv4Address) this.isIpv4Address = isIpv4Address;
+        this.isIpv4Address = isIpv4Address;
     }
 
     public disconnect() {
@@ -51,7 +51,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
 
     /* support ipv4, ipv6 without domain */
     private onConnected() {
-        var headerBuffer: Buffer = ShadowsocksFormatter.build({
+        const headerBuffer: Buffer = ShadowsocksFormatter.build({
             version: this.isIpv4Address ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
             address: this.targetHost,
             port: this.targetPort

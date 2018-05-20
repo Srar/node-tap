@@ -4,7 +4,8 @@ import {
     BasePacket,
     IpPacket,
     TcpPacket,
-    IpProtocol
+    IpProtocol,
+    EthernetType,
 } from "../PacketsStruct"
 import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient"
 import IpacketFormatter from "../formatters/IpPacketFormatter"
@@ -12,6 +13,7 @@ import TcpPacketFormatter from "../formatters/TcpPacketFormatter"
 import * as EventEmitter from "events"
 
 interface TcpConnection {
+    ipversion: EthernetType
     localAddress: Buffer,
     localIp: Buffer,
     localPort: number,
@@ -91,7 +93,7 @@ class TcpServerSession extends EventEmitter {
         if (this.state == TcpConnectionState.HandShake) {
             if (!tcpPacket.SYN) return;
             this.currentAckNum = tcpPacket.sequenceNumber + 1;
-            var ack: TcpPacket = {
+            let ack: TcpPacket = {
                 sequenceNumber: this.currentSeqNum,
                 acknowledgmentNumber: this.currentAckNum,
                 totalLength: 44,
@@ -101,10 +103,10 @@ class TcpServerSession extends EventEmitter {
             };
             ack = Object.assign(this.buildBaseTcpPacket(), ack);
             ack.identification = 0;
-            var tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
+            const tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
             this.nativeWrite(tcpAckpacket);
             this.state = TcpConnectionState.HandShake_ACK;
-            this.shadowsocks.connect(PacketUtils.isIPv4(data), PacketUtils.ipAddressToString(this.connection.localIp), this.connection.localPort);
+            this.shadowsocks.connect(this.connection.ipversion === 4, this.connection.localIp, this.connection.localPort);
             this.shadowsocks.on("data", this.tcpShadowsocksData.bind(this));
             this.shadowsocks.on("disconnected", this.tcpShadowsocksClosed.bind(this));
             return;
@@ -272,7 +274,8 @@ class TcpServerSession extends EventEmitter {
     public buildBaseTcpPacket(dataLength: number = 0): TcpPacket {
         this.currentIdNum = PacketUtils.increaseNumber(this.currentIdNum, 65536);
         return {
-            version: 4,
+            type: this.connection.ipversion,
+            version: this.connection.ipversion === EthernetType.IPv4 ? 4 : 6,
             TTL: 64,
             protocol: IpProtocol.TCP,
             sourceIp: this.connection.localIp,
@@ -322,8 +325,8 @@ class TcpServerSession extends EventEmitter {
         var str = "";
         str += `localAddress: ${this.connection.localAddress.map(x => <any>x.toString(16)).join(":")}\n`;
         str += `targetAddress: ${this.connection.targetAddress.map(x => <any>x.toString(16)).join(":")}\n`;
-        str += `localIp: ${PacketUtils.ipAddressToString(this.connection.localIp)}\n`;
-        str += `targetIp: ${PacketUtils.ipAddressToString(this.connection.targetIp)}\n`;
+        str += `localIp: ${PacketUtils.ipv4ToString(this.connection.localIp)}\n`;
+        str += `targetIp: ${PacketUtils.ipv4ToString(this.connection.targetIp)}\n`;
         str += `localPort: ${this.connection.localPort}\n`;
         str += `targetPort: ${this.connection.targetPort}`;
         return str;
@@ -333,18 +336,22 @@ class TcpServerSession extends EventEmitter {
 var connections = new Map<string, TcpServerSession>();
 
 export default function (buffer: Buffer, write: Function, next: Function) {
-    if (!PacketUtils.isIPv4(buffer)) return next();
-    if (!PacketUtils.isTCP(buffer)) return next();
 
-    var tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
-    var tcpConnectionId: string = PacketUtils.getConnectionId(tcpPacket);
+    if (PacketUtils.isIPv4(buffer)) {
+        if (!PacketUtils.isTCP(buffer)) return next();
+    } else if (PacketUtils.isIPv6(buffer)) {
+        if (!PacketUtils.isTCPForIpv6(buffer)) return next();
+    } else {
+        return next();
+    }
 
-    // console.log("SYN:", tcpPacket.SYN, "RST:", tcpPacket.RST, "ACK:", tcpPacket.ACK, "PSH", tcpPacket.PSH, "LEN:", buffer.length);
-    // console.log("SEQ:", tcpPacket.sequenceNumber, "DATA_LEN:", tcpPacket.payload.length);
+    const tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
+    const tcpConnectionId: string = PacketUtils.getConnectionId(tcpPacket);
 
-    var session = connections.get(tcpConnectionId);
+    let session = connections.get(tcpConnectionId);
     if (session == undefined || session == null) {
         session = new TcpServerSession({
+            ipversion: tcpPacket.version === 4 ? EthernetType.IPv4 : EthernetType.IPv6,
             localAddress: tcpPacket.sourceAddress,
             targetAddress: tcpPacket.destinaltionAddress,
             localIp: tcpPacket.destinationIp,

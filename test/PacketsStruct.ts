@@ -66,6 +66,7 @@ export interface IpPacket extends BasePacket {
 
 export interface Ipv6Packet extends BasePacket {
     /* 4 bits version, 8 bits TC, 20 bits flow-ID */
+    version?: number,
     flow?: number
     payloadLength?: number,
     protocol?: IpProtocol,

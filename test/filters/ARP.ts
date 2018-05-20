@@ -10,10 +10,10 @@ export default function (data: Buffer, write: Function, next: Function) {
 
     var arpPacket = ArpPacketFormatter.format(<Buffer>data);
 
-    if (PacketUtils.ipAddressToString(arpPacket.senderIpAdress) != DeviceConfiguration.LOCAL_IP_ADDRESS)
+    if (PacketUtils.ipv4ToString(arpPacket.senderIpAdress) != DeviceConfiguration.LOCAL_IP_ADDRESS)
         return;
 
-    if (PacketUtils.ipAddressToString(arpPacket.targetIpAddeess) != DeviceConfiguration.GATEWAY_IP_ADDRESS)
+    if (PacketUtils.ipv4ToString(arpPacket.targetIpAddeess) != DeviceConfiguration.GATEWAY_IP_ADDRESS)
         return;
 
     var gatewayMac: Buffer = Buffer.allocUnsafe(6);
@@ -35,9 +35,9 @@ export default function (data: Buffer, write: Function, next: Function) {
         /* reply */
         opCode: new Buffer([0x00, 0x02]),
         senderMacAddress: gatewayMac,
-        senderIpAdress: PacketUtils.stringToIpAddress(DeviceConfiguration.GATEWAY_IP_ADDRESS),
+        senderIpAdress: PacketUtils.stringToIpv4(DeviceConfiguration.GATEWAY_IP_ADDRESS),
         targetMacAddress: arpPacket.destinaltionAddress,
-        targetIpAddeess: PacketUtils.stringToIpAddress(DeviceConfiguration.LOCAL_IP_ADDRESS),
+        targetIpAddeess: PacketUtils.stringToIpv4(DeviceConfiguration.LOCAL_IP_ADDRESS),
     });
 
     write(responsePacket);
