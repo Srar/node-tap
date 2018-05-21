@@ -99,7 +99,7 @@ class TcpServerSession extends EventEmitter {
                 totalLength: 44,
                 SYN: true,
                 ACK: true,
-                options: new Buffer([0x02, 0x04, 0x05, 0xb4])
+                options: new Buffer([0x02, 0x04, 0x05, 0x78])
             };
             ack = Object.assign(this.buildBaseTcpPacket(), ack);
             ack.identification = 0;
