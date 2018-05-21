@@ -180,8 +180,8 @@ async function main() {
             ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
             ["route", "delete", Config.get("DNS")],
 
-            ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, "fd05:5dd5:b158:b23::5"],
-            ["netsh", "interface", "ipv6", "add", "route", "::/0", `name=${tapInfo.index}`, "fd05:5dd5:b158:b23::4"],
+            ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
+            ["netsh", "interface", "ipv6", "add", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
             ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"],
 
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],

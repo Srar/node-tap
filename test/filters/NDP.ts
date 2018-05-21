@@ -26,11 +26,11 @@ export default function (data: Buffer, write: Function, next: Function) {
         return next();
     }
 
-    if (PacketUtils.ipv6ToString(packet.sourceIp) !== "fd05:5dd5:b158:0b23:0000:0000:0000:0005") {
+    if (PacketUtils.ipv6ToString(packet.sourceIp) !== DeviceConfiguration.LOCAL_IPV6_ADDRESS) {
         return next();
     }
 
-    if (PacketUtils.ipv6ToString(packet.targetAddress) !== "fd05:5dd5:b158:0b23:0000:0000:0000:0004") {
+    if (PacketUtils.ipv6ToString(packet.targetAddress) !== DeviceConfiguration.GATEWAY_IPV6_ADDRESS) {
         return next();
     }
 
