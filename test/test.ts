@@ -28,6 +28,7 @@ const optimist = require("optimist")
     .default("udppasswd", undefined)
     .default("udpmethod", undefined)
     .default("dns", "8.8.8.8")
+    .default("v6dns", "2001:4860:4860::8888")
     .default("skipdns", "false")
     .default("routes", "0.0.0.0/0")
 
@@ -180,7 +181,8 @@ async function main() {
             ["route", "delete", Config.get("DNS")],
 
             ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, "fd05:5dd5:b158:b23::5"],
-            ["netsh", "interface", "ipv6", "add", "route", "::/0", tapInfo.index, "fd05:5dd5:b158:b23::4"],
+            ["netsh", "interface", "ipv6", "add", "route", "::/0", `name=${tapInfo.index}`, "fd05:5dd5:b158:b23::4"],
+            ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"],
 
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
             ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
@@ -189,6 +191,7 @@ async function main() {
         if (Config.get("SkipDNS")) {
             initCommands.push(
                 ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+                ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=""`, "validate=no"],
             );
         }
 
