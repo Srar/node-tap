@@ -106,7 +106,7 @@ class TcpServerSession extends EventEmitter {
             const tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
             this.nativeWrite(tcpAckpacket);
             this.state = TcpConnectionState.HandShake_ACK;
-            this.shadowsocks.connect(this.connection.ipversion === 4, this.connection.localIp, this.connection.localPort);
+            this.shadowsocks.connect(this.connection.ipversion === EthernetType.IPv4, this.connection.localIp, this.connection.localPort);
             this.shadowsocks.on("data", this.tcpShadowsocksData.bind(this));
             this.shadowsocks.on("disconnected", this.tcpShadowsocksClosed.bind(this));
             return;
