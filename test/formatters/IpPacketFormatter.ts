@@ -13,9 +13,9 @@ export default class IpPacketFormatter extends BasePacketFormatter {
     static build(obj: IpPacket | Ipv6Packet): Buffer {
 
         if (obj.type == undefined || obj.type == null || obj.type == EthernetType.IPv4) {
-            var ipv4obj: IpPacket = obj;
-            var ipPacketBuffer: Buffer = Buffer.allocUnsafe(20);
-            var bufferFormatter = new BufferFormatter(ipPacketBuffer);
+            const ipv4obj: IpPacket = obj;
+            const ipPacketBuffer: Buffer = Buffer.allocUnsafe(20);
+            const bufferFormatter = new BufferFormatter(ipPacketBuffer);
             bufferFormatter.writeByte((ipv4obj.version << 4) | (20 / 4));
             bufferFormatter.writeByte(ipv4obj.TOS);
             // set ip packet total length.
@@ -35,7 +35,7 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             bufferFormatter.writeBytes(ipv4obj.destinationIp);
             ipPacketBuffer.writeUInt16BE(IpPacketFormatter.checksum(ipPacketBuffer), 10);
 
-            var concatArray = [
+            let concatArray = [
                 super.build({
                     sourceAddress: ipv4obj.sourceAddress,
                     destinaltionAddress: ipv4obj.destinaltionAddress,
@@ -49,20 +49,20 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             }
             return Buffer.concat(concatArray);
         } else if (obj.type == EthernetType.IPv6) {
-            var ipv6obj: Ipv6Packet = obj;
-            var ipPacketBuffer: Buffer = Buffer.allocUnsafe(40);
-            var bufferFormatter = new BufferFormatter(ipPacketBuffer);
+            const ipv6obj: Ipv6Packet = obj;
+            const ipPacketBuffer: Buffer = Buffer.allocUnsafe(40);
+            const bufferFormatter = new BufferFormatter(ipPacketBuffer);
             if (ipv6obj.flow == undefined) {
                 ipv6obj.flow = 0;
                 ipv6obj.flow |= 0x60000000;
             }
             bufferFormatter.writeUInt32BE(ipv6obj.flow);
-            bufferFormatter.writeUInt16BE(ipv6obj.payloadLength);
+            bufferFormatter.writeUInt16BE(ipv6obj.tcpipPayload.length);
             bufferFormatter.writeByte(ipv6obj.protocol);
             bufferFormatter.writeByte(ipv6obj.hopLimit || 0xff);
             bufferFormatter.writeBytes(ipv6obj.sourceIp);
             bufferFormatter.writeBytes(ipv6obj.destinationIp);
-            var concatArray = [
+            let concatArray = [
                 super.build({
                     sourceAddress: ipv6obj.sourceAddress,
                     destinaltionAddress: ipv6obj.destinaltionAddress,
@@ -141,9 +141,11 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             packet = Object.assign(basePacket, packet);
             return <IpPacket>packet;
         } else if (basePacket.type == EthernetType.IPv6) {
-            var packet: Ipv6Packet = {};
+            let packet: Ipv6Packet = {};
+            packet.version = bufferFormatter.readUInt32BE(false) >> 28,
             packet.flow = bufferFormatter.readUInt32BE();
             packet.payloadLength = bufferFormatter.readUInt16BE();
+            packet.protocol = bufferFormatter.readByte();
             packet.hopLimit = bufferFormatter.readByte();
             packet.sourceIp = bufferFormatter.readBuffer(16);
             packet.destinationIp = bufferFormatter.readBuffer(16);
@@ -151,7 +153,7 @@ export default class IpPacketFormatter extends BasePacketFormatter {
             packet = Object.assign(basePacket, packet);
             return <IpPacket>packet;
         } else {
-            throw new TypeError("Unsupport ethernet type.");
+            throw new TypeError(`Unsupported ethernet type: ${basePacket.type}`);
         }
     }
 }

@@ -62,15 +62,15 @@ export default function (data: Buffer, write: Function, next: Function) {
     /* unsupported large udp packet now. */
     if (data.length > 1400) return;
 
-    var udpPacket: UdpPacket = UdpPacketFormatter.format(data);
+    const udpPacket: UdpPacket = UdpPacketFormatter.format(data);
 
-    if(PacketUtils.isPrivateIpAddress(udpPacket.destinationIp)) {
+    if(PacketUtils.isPrivateIpv4Address(udpPacket.destinationIp)) {
         return next();
     }
     
-    var connectionId: string = PacketUtils.getConnectionId(udpPacket);
+    const connectionId: string = PacketUtils.getConnectionId(udpPacket);
 
-    var connection: UdpConnection = connections.get(connectionId);
+    let connection: UdpConnection = connections.get(connectionId);
 
     if (connection == null) {
         var isClosed: boolean = false;
@@ -98,7 +98,7 @@ export default function (data: Buffer, write: Function, next: Function) {
             }
         };
         connection.udpClient.on("data", (data) => {
-            var udpPacket: Buffer = buildUdpPacket(connection, data);
+            const udpPacket: Buffer = buildUdpPacket(connection, data);
             connections.get(connectionId);
             write(udpPacket);
         });

@@ -28,6 +28,7 @@ const optimist = require("optimist")
     .default("udppasswd", undefined)
     .default("udpmethod", undefined)
     .default("dns", "8.8.8.8")
+    .default("v6dns", "2001:4860:4860::8888")
     .default("skipdns", "false")
     .default("routes", "0.0.0.0/0")
 
@@ -114,7 +115,7 @@ async function main() {
     }
 
     /* 设置OpenVPN网卡 */
-    if(!TAPControl.checkAdapterIsInstalled()) {
+    if (!TAPControl.checkAdapterIsInstalled()) {
         // console.log("Installing driver...");
         // const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
         // if(result !== 0) {
@@ -179,6 +180,10 @@ async function main() {
             ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
             ["route", "delete", Config.get("DNS")],
 
+            ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
+            ["netsh", "interface", "ipv6", "add", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
+            ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"],
+
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
             ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
         ];
@@ -186,6 +191,7 @@ async function main() {
         if (Config.get("SkipDNS")) {
             initCommands.push(
                 ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+                ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=""`, "validate=no"],
             );
         }
 
@@ -201,7 +207,7 @@ async function main() {
     // 添加自定义路由表
     {
         let routes: Array<Array<string | number>> = [];
-        
+
         let cidrList: Array<string> = [];
 
         if (fs.existsSync(argv.routes)) {
@@ -214,7 +220,7 @@ async function main() {
         for (let cidr of cidrList) {
             cidr = cidr.trim();
             const [ip, range] = cidr.split("/");
-            const netmask: string = PacketUtils.calculatenNetMask(parseInt(range));
+            const netmask: string = PacketUtils.calculatenIpv4NetMask(parseInt(range));
             routes.push([ip, netmask]);
         }
 
@@ -243,6 +249,7 @@ async function main() {
     filters.push(require("./filters/TCP").default);
     filters.push(require("./filters/UDP").default);
     filters.push(require("./filters/ARP").default);
+    filters.push(require("./filters/NDP").default);
     filters.push(require("./filters/TimesUDP").default);
 
     async function loop() {
