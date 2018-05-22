@@ -34,9 +34,10 @@
 * `udpmethod`: UDP Shadowsocks加密方式(可选)
 * `xtudp`: UDP 多倍发包倍率(适用于游戏)
 * `dns`: 指定DNS(默认8.8.8.8)
-* `skipdns`: DNS不经过Shadowsocks转发(默认false)
+* `v6dns`: 指定IPv6 DNS(默认2001:4860:4860::8888)
+* `skipdns`: DNS不经过Shadowsocks转发, IPv6 DNS会被禁用(默认`false`)
 * `routes`: 指定单个或多个`CIDR`被转发, 例如: `1.1.1.1/32,2.2.2.2/24`(默认`0.0.0.0/0`)
-
+* `disablev6`: 禁用IPv6转发(默认`true`)
 
 > 启动添加路由时出现`对象已存在`或`找不到元素`为正常现象.
 
@@ -67,6 +68,10 @@ A: 不支持.
 Q: 参数内`TCP`与`UDP`作用.
 
 A: 参数内`TCP`/`UDP`参数是针对`TCP`/`UDP`不同协议跑不同SS服务器所设计的. 如果您不需要协议单独分流那么只需要指定`host`, `port`, `passwd`, `method`即可.
+
+Q: Windows7启动后无效果.
+
+A: 卸载`npcap`使用[`winpcap`](https://www.winpcap.org/).
 
 # 参考
 * [net-speeder](https://github.com/snooda/net-speeder)
