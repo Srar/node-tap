@@ -71,13 +71,17 @@ export default {
         return `${buf[0].toString(10)}.${buf[1].toString(10)}.${buf[2].toString(10)}.${buf[3].toString(10)}`
     },
 
-    isBroadCast: function (bufs: Buffer): boolean {
-        for (var i = 0; i < 6; i++) {
-            if (bufs[i] != 0xff) {
+    isBroadCast: function (buffer: Buffer): boolean {
+        for (let i = 0; i < 6; i++) {
+            if (buffer[i] != 0xff) {
                 return false;
             }
         }
         return true;
+    },
+
+    isBroadCastForIpv6: function(buffer: Buffer): boolean {
+        return (buffer[0] === 0x33 && buffer[1] === 0x33);
     },
 
     isARP: function (buffer: Buffer): boolean {
@@ -102,6 +106,10 @@ export default {
 
     isUDP: function (buffer: Buffer): boolean {
         return buffer[23] === 0x11;
+    },
+
+    isUDPForIpv6: function(buffer: Buffer): boolean {
+        return buffer[20] === 0x11;
     },
 
     isIGMP: function (buffer: Buffer): boolean {
