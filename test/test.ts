@@ -30,6 +30,7 @@ const optimist = require("optimist")
     .default("dns", "8.8.8.8")
     .default("v6dns", "2001:4860:4860::8888")
     .default("skipdns", "false")
+    .default("disablev6", "true")
     .default("routes", "0.0.0.0/0")
 
 const argv = optimist.argv;
@@ -180,10 +181,6 @@ async function main() {
             ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
             ["route", "delete", Config.get("DNS")],
 
-            ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
-            ["netsh", "interface", "ipv6", "add", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
-            ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"],
-
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
             ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
         ];
@@ -192,6 +189,17 @@ async function main() {
             initCommands.push(
                 ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
                 ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=""`, "validate=no"],
+            );
+        }
+
+        if (argv.disablev6 === "true") {
+            console.log("IPv6 has been disabled.");
+            initCommands.push(["netsh", "interface", "ipv6", "set", "int", tapInfo.index.toString(), "advertise=enable", "managed=enable"]);
+        } else {
+            initCommands.push(
+                ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
+                ["netsh", "interface", "ipv6", "add", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
+                ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"]
             );
         }
 
