@@ -119,9 +119,9 @@ async function main() {
     if (!TAPControl.checkAdapterIsInstalled()) {
         console.log("Installing driver...");
         const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
-        if(result !== 0) {
+        if (result !== 0) {
             console.error(`Driver was not successfully installed. Exit code: ${result}.`);
-            if(result === 2) {
+            if (result === 2) {
                 console.log(`Please run as administrator.`);
             }
             process.exit(-1);
@@ -192,7 +192,10 @@ async function main() {
 
         if (argv.disablev6 === "true") {
             console.log("IPv6 has been disabled.");
-            initCommands.push(["netsh", "interface", "ipv6", "set", "int", tapInfo.index.toString(), "advertise=enable", "managed=enable"]);
+            initCommands.push(
+                ["netsh", "int", "ipv6", "delete", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
+                ["netsh", "int", "ipv6", "delete", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`]
+            );
         } else {
             initCommands.push(
                 ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
