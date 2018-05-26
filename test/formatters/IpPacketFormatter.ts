@@ -5,6 +5,7 @@ import {
     Ipv6Packet,
     EthernetType
 } from "../PacketsStruct"
+import * as raw from "raw-socket"
 import BufferFormatter from "./BufferFormatter"
 import BasePacketFormatter from "./BasePacketFormatter"
 
@@ -80,41 +81,8 @@ export default class IpPacketFormatter extends BasePacketFormatter {
         }
     }
 
-    // from https://stackoverflow.com/questions/8269693/crc-checking-done-automatically-on-tcp-ip
-    static checksum(bufs): number {
-        var length: number = bufs.length;
-        var i: number = 0;
-        var sum: number = 0;
-        var data: number;
-
-        // Handle all pairs
-        while (length > 1) {
-            // Corrected to include @Andy's edits and various comments on Stack Overflow
-            data = (((bufs[i] << 8) & 0xFF00) | ((bufs[i + 1]) & 0xFF));
-            sum += data;
-            // 1's complement carry bit correction in 16-bits (detecting sign extension)
-            if ((sum & 0xFFFF0000) > 0) {
-                sum = sum & 0xFFFF;
-                sum += 1;
-            }
-            i += 2;
-            length -= 2;
-        }
-
-        // Handle remaining byte in odd length buffers
-        if (length > 0) {
-            // Corrected to include @Andy's edits and various comments on Stack Overflow
-            sum += (bufs[i] << 8 & 0xFF00);
-            // 1's complement carry bit correction in 16-bits (detecting sign extension)
-            if ((sum & 0xFFFF0000) > 0) {
-                sum = sum & 0xFFFF;
-                sum += 1;
-            }
-        }
-        // Final 1's complement value correction to 16-bits
-        sum = ~sum;
-        sum = sum & 0xFFFF;
-        return sum;
+    static checksum(buffer: Buffer): number {
+        return raw.createChecksum(buffer);
     }
 
     static format(buffer: Buffer): IpPacket | Ipv6Packet {
