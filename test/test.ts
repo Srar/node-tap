@@ -198,6 +198,7 @@ async function main() {
         if (Config.get("SkipDNS")) {
             initCommands.push(
                 ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
+                ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", DeviceConfiguration.GATEWAY_IP_ADDRESS, "primary"],
                 ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=""`, "validate=no"],
             );
         }
@@ -271,6 +272,7 @@ async function main() {
     // tslint:disable-next-line:ban-types
     const filters: Array<Function> = [];
     filters.push(require("./filters/TCP").default);
+    filters.push(require("./filters/DNS").default);
     filters.push(require("./filters/UDP").default);
     filters.push(require("./filters/ARP").default);
     filters.push(require("./filters/NDP").default);
