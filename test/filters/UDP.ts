@@ -1,28 +1,26 @@
-import Config from "../Config"
-import * as dgram from "dgram"
-import PacketUtils from "../PacketUtils"
+import Config from "../Config";
+import PacketUtils from "../PacketUtils";
 import {
-    BasePacket,
-    IpPacket,
     UdpPacket,
     IpProtocol,
     EthernetType,
-} from "../PacketsStruct"
-import ConnectionManager from "../ConnectionManager"
-import UdpPacketFormatter from "../formatters/UdpPacketFormatter"
-import ShadowsocksUdpClient from "../shadowsocks/ShadowsocksUdpClient"
+} from "../PacketsStruct";
+import ConnectionManager from "../ConnectionManager";
+import UdpPacketFormatter from "../formatters/UdpPacketFormatter";
+import ShadowsocksUdpClient from "../shadowsocks/ShadowsocksUdpClient";
 
+// tslint:disable-next-line:interface-name
 interface UdpConnection {
-    ipversion: EthernetType,
-    onFree?: Function
-    udpClient: ShadowsocksUdpClient,
-    sourceAddress: Buffer,
-    sourceIp: Buffer,
-    sourcePort: number,
-    targetAddress: Buffer,
-    targetIp: Buffer,
-    targetPort: number,
-    identification: number
+    ipversion: EthernetType;
+    onFree?: () => void;
+    udpClient: ShadowsocksUdpClient;
+    sourceAddress: Buffer;
+    sourceIp: Buffer;
+    sourcePort: number;
+    targetAddress: Buffer;
+    targetIp: Buffer;
+    targetPort: number;
+    identification: number;
 }
 
 const connections = new ConnectionManager<UdpConnection>();
@@ -44,11 +42,11 @@ function buildUdpPacket(connection: UdpConnection, data: Buffer): Buffer {
         identification: connection.identification,
         TOS: 0,
         flags: 0,
-        payload: data
+        payload: data,
     });
 }
 
-export default function (data: Buffer, write: Function, next: Function) {
+export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
 
     if (PacketUtils.isBroadCast(data)) {
         return next();
@@ -71,7 +69,7 @@ export default function (data: Buffer, write: Function, next: Function) {
     }
 
     /* unsupported large udp packet now. */
-    if (data.length > 1400) return;
+    if (data.length > 1400) { return; }
 
     const udpPacket: UdpPacket = UdpPacketFormatter.format(data);
 
@@ -99,13 +97,15 @@ export default function (data: Buffer, write: Function, next: Function) {
                 udpPacket.destinationIp,
                 udpPacket.destinationPort,
             ),
-            onFree: function () {
-                if (isClosed) return;
+            onFree() {
+                if (isClosed) { return; }
                 isClosed = true;
                 connection.udpClient.close();
-            }
+            },
         };
+        // tslint:disable-next-line:no-shadowed-variable
         connection.udpClient.on("data", (data) => {
+            // tslint:disable-next-line:no-shadowed-variable
             const udpPacket: Buffer = buildUdpPacket(connection, data);
             connections.get(connectionId);
             write(udpPacket);

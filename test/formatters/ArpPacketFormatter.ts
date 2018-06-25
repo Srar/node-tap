@@ -1,18 +1,17 @@
 import {
-    BasePacket,
     ArpPacket,
     EthernetType,
-} from "../PacketsStruct"
-import BasePacketFormatter from "./BasePacketFormatter"
+} from "../PacketsStruct";
+import BasePacketFormatter from "./BasePacketFormatter";
 
 export default class ArpPacketFormatte extends BasePacketFormatter {
 
-    static build(obj: ArpPacket) {
+    public static build(obj: ArpPacket) {
         return Buffer.concat([
             super.build({
                 sourceAddress: obj.sourceAddress,
                 destinaltionAddress: obj.targetMacAddress,
-                type: EthernetType.ARP
+                type: EthernetType.ARP,
             }),
             obj.hardwareType,
             obj.protocolType,
@@ -25,9 +24,9 @@ export default class ArpPacketFormatte extends BasePacketFormatter {
             obj.targetIpAddeess,
         ]);
     }
-    
-    static format(bufs: Buffer): ArpPacket {
-        var packet = {
+
+   public  static format(bufs: Buffer): ArpPacket {
+        let packet = {
             hardwareType: bufs.slice(14, 16),
             protocolType: bufs.slice(16, 18),
             hardwareSize: bufs.slice(18, 19),
@@ -39,6 +38,6 @@ export default class ArpPacketFormatte extends BasePacketFormatter {
             targetIpAddeess: bufs.slice(38, 42),
         };
         packet = Object.assign(BasePacketFormatter.format(bufs), packet);
-        return <ArpPacket>packet;
+        return packet as ArpPacket;
     }
 }

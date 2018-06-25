@@ -1,8 +1,8 @@
-import * as net from "net"
-import * as EventEmitter from "events"
+import * as net from "net";
+import * as EventEmitter from "events";
 
-import SSCrypto from "./crypto/SSCrypto"
-import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter"
+import SSCrypto from "./crypto/SSCrypto";
+import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter";
 
 export default class ShadowsocksTcpClient extends EventEmitter {
 
@@ -30,20 +30,28 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         this.socket.on("data", this.onData.bind(this));
         this.socket.on("error", this.disconnect.bind(this));
         this.socket.connect(this.port, this.host, this.onConnected.bind(this));
-        if (targetHost) this.targetHost = targetHost;
-        if (targetPort) this.targetPort = targetPort;
+        if (targetHost) {
+            this.targetHost = targetHost;
+        }
+        if (targetPort) {
+            this.targetPort = targetPort;
+        }
         this.isIpv4Address = isIpv4Address;
     }
 
     public disconnect() {
-        if (!this.isConnected) return;
+        if (!this.isConnected) {
+            return;
+        }
         this.socket.end();
         this.emit("disconnected");
         this.removeAllListeners();
     }
 
     public destroy() {
-        if (!this.isConnected) return;
+        if (!this.isConnected) {
+            return;
+        }
         this.socket.destroy();
         this.emit("destroy");
         this.removeAllListeners();
@@ -54,16 +62,20 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         const headerBuffer: Buffer = ShadowsocksFormatter.build({
             version: this.isIpv4Address ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
             address: this.targetHost,
-            port: this.targetPort
+            port: this.targetPort,
         });
         this.socket.write(this.method.encryptData(headerBuffer));
-        for (let buffer of this.buffersCache) this.socket.write(this.method.encryptData(buffer));
+        for (const buffer of this.buffersCache) {
+            this.socket.write(this.method.encryptData(buffer));
+        }
         this.buffersCache = [];
         this.isConnected = true;
         this.emit("connected", this);
     }
 
+    // tslint:disable-next-line:member-ordering
     public write(data: Buffer): Promise<void> {
+        // tslint:disable-next-line:space-before-function-paren
         return new Promise(function (resolve, reject) {
             if (!this.isConnected) {
                 this.buffersCache.push(data);
@@ -73,6 +85,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         }.bind(this));
     }
 
+    // tslint:disable-next-line:member-ordering
     public pause(p: boolean = true) {
         if (this.isConnected) {
             p ? this.socket.pause() : this.socket.resume();
@@ -81,7 +94,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
 
     private onData(data) {
         try {
-            var decryptedData = this.method.decryptData(data);
+            const decryptedData = this.method.decryptData(data);
             if (decryptedData) {
                 this.emit("data", decryptedData);
             }

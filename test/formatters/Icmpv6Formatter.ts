@@ -1,21 +1,17 @@
 import {
-    BasePacket,
-    IpPacket,
     Ipv6Packet,
     Icmpv6Packet,
-    IpProtocol
-} from "../PacketsStruct"
-import * as raw from "raw-socket"
-import PacketUtils from "../PacketUtils"
+    IpProtocol,
+} from "../PacketsStruct";
 
-import BufferFormatter from "./BufferFormatter"
-import IpPacketFormatter from "./IpPacketFormatter"
+import BufferFormatter from "./BufferFormatter";
+import IpPacketFormatter from "./IpPacketFormatter";
 
 export default class Icmpv6Formatter extends IpPacketFormatter {
 
-    static build(obj: Icmpv6Packet): Buffer {
+    public static build(obj: Icmpv6Packet): Buffer {
 
-        let icmpv6Buffer = Buffer.allocUnsafe(24 + ((obj.options === null || obj.options === undefined) ? 0 : obj.options.length));
+        const icmpv6Buffer = Buffer.allocUnsafe(24 + ((obj.options === null || obj.options === undefined) ? 0 : obj.options.length));
         const bufferFormatter = new BufferFormatter(icmpv6Buffer);
 
         bufferFormatter.writeByte(obj.icmpv6type);
@@ -45,7 +41,7 @@ export default class Icmpv6Formatter extends IpPacketFormatter {
         return super.build(obj);
     }
 
-    static format(bufs: Buffer): Icmpv6Packet {
+    public static format(bufs: Buffer): Icmpv6Packet {
         const ipPacket: Ipv6Packet = super.format(bufs);
 
         if (IpProtocol.ICMPv6 !== ipPacket.protocol) {
@@ -64,7 +60,7 @@ export default class Icmpv6Formatter extends IpPacketFormatter {
 
         packet.options = bufferFormatter.readBuffer();
         packet = Object.assign(ipPacket, packet);
-        return <Icmpv6Packet>packet;
+        return packet as Icmpv6Packet;
     }
 
 }

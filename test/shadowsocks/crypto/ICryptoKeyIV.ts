@@ -1,6 +1,6 @@
 interface ICryptoKeyIV {
-    key: Buffer
-    iv: Buffer
-};
+    key: Buffer;
+    iv: Buffer;
+}
 
 export default ICryptoKeyIV;

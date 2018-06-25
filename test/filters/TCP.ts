@@ -1,27 +1,25 @@
-import Config from "../Config"
-import PacketUtils from "../PacketUtils"
+import Config from "../Config";
+import PacketUtils from "../PacketUtils";
 import {
-    BasePacket,
-    IpPacket,
     TcpPacket,
     IpProtocol,
     EthernetType,
-} from "../PacketsStruct"
-import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient"
-import IpacketFormatter from "../formatters/IpPacketFormatter"
-import TcpPacketFormatter from "../formatters/TcpPacketFormatter"
-import * as EventEmitter from "events"
+} from "../PacketsStruct";
+import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient";
+import TcpPacketFormatter from "../formatters/TcpPacketFormatter";
+import * as EventEmitter from "events";
 
+// tslint:disable-next-line:interface-name
 interface TcpConnection {
-    ipversion: EthernetType
-    localAddress: Buffer,
-    localIp: Buffer,
-    localPort: number,
-    targetAddress: Buffer,
-    targetIp: Buffer,
-    targetPort: number,
-    targetReceiveWindow: number,
-    localReceiveWindow: number,
+    ipversion: EthernetType;
+    localAddress: Buffer;
+    localIp: Buffer;
+    localPort: number;
+    targetAddress: Buffer;
+    targetIp: Buffer;
+    targetPort: number;
+    targetReceiveWindow: number;
+    localReceiveWindow: number;
 }
 
 enum TcpConnectionState {
@@ -34,7 +32,7 @@ enum TcpConnectionState {
     /* 本端主动FIN */
     LocalCloseWating,
     LocalCloseWating_1,
-    Closed
+    Closed,
 }
 
 class TcpServerSession extends EventEmitter {
@@ -51,11 +49,11 @@ class TcpServerSession extends EventEmitter {
 
     private sendingBuffers: Array<Buffer> = [];
 
-    private routers: Array<Function> = [];
+    private routers: Array<(data: Buffer, tcpPacket: TcpPacket) => void> = [];
 
     constructor(
         public connection: TcpConnection,
-        private nativeWrite: Function) {
+        private nativeWrite: (data: Buffer) => void) {
 
         super();
 
@@ -78,20 +76,25 @@ class TcpServerSession extends EventEmitter {
     }
 
     public dataRouter(data: Buffer, tcpPacket: TcpPacket) {
-
-        if (this.state === TcpConnectionState.Closed) return;
+        if (this.state === TcpConnectionState.Closed) {
+            return;
+        }
         if (tcpPacket.RST) {
             this.tcpRst(data, tcpPacket);
             return;
         }
 
-        var func: Function = this.routers[this.state];
-        if (func) func(data, tcpPacket);
+        const func = this.routers[this.state];
+        if (func) {
+            func(data, tcpPacket);
+        }
     }
 
     public tcpHandshark(data: Buffer, tcpPacket: TcpPacket) {
-        if (this.state == TcpConnectionState.HandShake) {
-            if (!tcpPacket.SYN) return;
+        if (this.state === TcpConnectionState.HandShake) {
+            if (!tcpPacket.SYN) {
+                return;
+            }
             this.currentAckNum = tcpPacket.sequenceNumber + 1;
             let ack: TcpPacket = {
                 sequenceNumber: this.currentSeqNum,
@@ -99,7 +102,7 @@ class TcpServerSession extends EventEmitter {
                 totalLength: 44,
                 SYN: true,
                 ACK: true,
-                options: new Buffer([0x02, 0x04, 0x05, 0x78])
+                options: new Buffer([0x02, 0x04, 0x05, 0x78]),
             };
             ack = Object.assign(this.buildBaseTcpPacket(), ack);
             ack.identification = 0;
@@ -112,8 +115,10 @@ class TcpServerSession extends EventEmitter {
             return;
         }
 
-        if (this.state == TcpConnectionState.HandShake_ACK) {
-            if (tcpPacket.acknowledgmentNumber != this.currentSeqNum + 1) return;
+        if (this.state === TcpConnectionState.HandShake_ACK) {
+            if (tcpPacket.acknowledgmentNumber !== this.currentSeqNum + 1) {
+                return;
+            }
             this.state = TcpConnectionState.Data;
             this.currentAckNum = tcpPacket.sequenceNumber;
             this.currentSeqNum = tcpPacket.acknowledgmentNumber;
@@ -141,14 +146,14 @@ class TcpServerSession extends EventEmitter {
                 totalLength: 40,
                 ACK: true,
             };
-            ack = Object.assign(this.buildBaseTcpPacket(), ack);;
-            let tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
+            ack = Object.assign(this.buildBaseTcpPacket(), ack);
+            const tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
             this.nativeWrite(tcpAckpacket);
             this.shadowsocks.write(tcpPacket.payload);
         }
 
         /* 只接受最新的ack包作为更新窗口大小 */
-        if (tcpPacket.acknowledgmentNumber == this.currentSeqNum) {
+        if (tcpPacket.acknowledgmentNumber === this.currentSeqNum) {
             this.currentWindowSize = tcpPacket.window;
             this.tcpShadowsocksData();
         }
@@ -158,7 +163,7 @@ class TcpServerSession extends EventEmitter {
 
     // TcpConnectionState.RemoteCloseWating
     public tcpClientRequestToClose(data: Buffer, tcpPacket: TcpPacket) {
-        if (this.state == TcpConnectionState.RemoteCloseWating) {
+        if (this.state === TcpConnectionState.RemoteCloseWating) {
             this.currentSeqNum = tcpPacket.acknowledgmentNumber;
             this.currentAckNum = tcpPacket.sequenceNumber + 1;
             let fin: TcpPacket = {
@@ -169,7 +174,7 @@ class TcpServerSession extends EventEmitter {
                 FIN: true,
             };
             fin = Object.assign(this.buildBaseTcpPacket(), fin);
-            let tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
+            const tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
             this.shadowsocks.removeAllListeners();
             this.shadowsocks.disconnect();
             this.sendingBuffers = [];
@@ -178,7 +183,7 @@ class TcpServerSession extends EventEmitter {
             return;
         }
 
-        if (this.state == TcpConnectionState.RemoteCloseWating_1) {
+        if (this.state === TcpConnectionState.RemoteCloseWating_1) {
             this.emit("closed");
             this.state = TcpConnectionState.Closed;
             return;
@@ -186,18 +191,22 @@ class TcpServerSession extends EventEmitter {
     }
 
     public tcpShadowsocksData(data?: Buffer) {
-        if (this.state != TcpConnectionState.Data) return;
-        if (data != undefined) {
-            this.sendingBuffers = this.sendingBuffers.concat(this.slicePacket(data, 1446))
+        if (this.state !== TcpConnectionState.Data) {
+            return;
+        }
+        if (data !== undefined) {
+            this.sendingBuffers = this.sendingBuffers.concat(this.slicePacket(data, 1446));
         }
         this.shadowsocks.pause(true);
-        if (this.currentWindowSize <= 0) return;
-        if (this.sendingBuffers.length == 0) {
+        if (this.currentWindowSize <= 0) {
+            return;
+        }
+        if (this.sendingBuffers.length === 0) {
             this.shadowsocks.pause(false);
             return;
         }
 
-        var waitingBuffer: Buffer = this.sendingBuffers[0];
+        const waitingBuffer: Buffer = this.sendingBuffers[0];
 
         if (waitingBuffer.length < this.currentWindowSize) {
             this.sendingBuffers.shift();
@@ -205,7 +214,7 @@ class TcpServerSession extends EventEmitter {
             this.sendDataPacket(waitingBuffer);
             this.tcpShadowsocksData();
         } else {
-            var smallerData: Buffer = waitingBuffer.slice(0, this.currentWindowSize);
+            const smallerData: Buffer = waitingBuffer.slice(0, this.currentWindowSize);
             this.sendingBuffers[0] = waitingBuffer.slice(this.currentWindowSize);
             this.currentWindowSize = 0;
             this.sendDataPacket(smallerData);
@@ -213,22 +222,22 @@ class TcpServerSession extends EventEmitter {
     }
 
     public sendDataPacket(data: Buffer, log: boolean = false) {
-        var dataPacket: TcpPacket = {
+        let dataPacket: TcpPacket = {
             sequenceNumber: this.currentSeqNum,
             acknowledgmentNumber: this.currentAckNum,
             ACK: true,
             PSH: true,
-            payload: data
+            payload: data,
         };
         dataPacket = Object.assign(this.buildBaseTcpPacket(data.length), dataPacket);
         this.currentSeqNum = dataPacket.sequenceNumber + dataPacket.payload.length;
-        var fullPacket = TcpPacketFormatter.build(dataPacket);
+        const fullPacket = TcpPacketFormatter.build(dataPacket);
         this.nativeWrite(fullPacket);
     }
 
     public tcpShadowsocksClosed(data: Buffer, tcpPacket: TcpPacket) {
 
-        if (this.state == TcpConnectionState.Data) {
+        if (this.state === TcpConnectionState.Data) {
             this.sendingBuffers = [];
             this.shadowsocks.removeAllListeners();
             this.state = TcpConnectionState.LocalCloseWating;
@@ -240,13 +249,13 @@ class TcpServerSession extends EventEmitter {
                 FIN: true,
             };
             fin = Object.assign(this.buildBaseTcpPacket(), fin);
-            let tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
+            const tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
             this.nativeWrite(tcpFinPacket);
             this.state = TcpConnectionState.LocalCloseWating_1;
             return;
         }
 
-        if (this.state == TcpConnectionState.LocalCloseWating_1 && tcpPacket.FIN && tcpPacket.ACK) {
+        if (this.state === TcpConnectionState.LocalCloseWating_1 && tcpPacket.FIN && tcpPacket.ACK) {
             this.currentSeqNum = tcpPacket.acknowledgmentNumber;
             this.currentAckNum = tcpPacket.sequenceNumber + 1;
             let fin: TcpPacket = {
@@ -256,7 +265,7 @@ class TcpServerSession extends EventEmitter {
                 ACK: true,
             };
             fin = Object.assign(this.buildBaseTcpPacket(), fin);
-            let tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
+            const tcpFinPacket: Buffer = TcpPacketFormatter.build(fin);
             this.nativeWrite(tcpFinPacket);
             this.state = TcpConnectionState.Closed;
             this.emit("closed");
@@ -288,25 +297,27 @@ class TcpServerSession extends EventEmitter {
             totalLength: 40 + dataLength,
             identification: this.currentIdNum,
             TOS: 0,
-        }
+        };
     }
 
     public slicePacket(data: Buffer, sliceSize: number): Array<Buffer> {
-        var bufsArray: Array<Buffer> = [];
+        const bufsArray: Array<Buffer> = [];
         if (data.length <= sliceSize) {
             bufsArray.push(data);
             return bufsArray;
         }
 
-        var sliceCount = data.length / sliceSize;
+        let sliceCount = data.length / sliceSize;
         // is float.
-        if (sliceCount != Math.floor(sliceCount)) sliceCount++;
+        if (sliceCount !== Math.floor(sliceCount)) {
+            sliceCount++;
+        }
         sliceCount = Math.floor(sliceCount);
 
-        var lastIndex: number = 0;
-        var targetIndex: number = sliceSize;
+        let lastIndex: number = 0;
+        let targetIndex: number = sliceSize;
 
-        for (var i = 0; i < sliceCount; i++) {
+        for (let i = 0; i < sliceCount; i++) {
             bufsArray.push(data.slice(lastIndex, targetIndex));
             lastIndex = targetIndex;
             targetIndex += sliceSize;
@@ -321,10 +332,11 @@ class TcpServerSession extends EventEmitter {
         return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
     }
 
+    // tslint:disable-next-line:member-ordering
     public toString(): string {
-        var str = "";
-        str += `localAddress: ${this.connection.localAddress.map(x => <any>x.toString(16)).join(":")}\n`;
-        str += `targetAddress: ${this.connection.targetAddress.map(x => <any>x.toString(16)).join(":")}\n`;
+        let str = "";
+        str += `localAddress: ${this.connection.localAddress.map((x) => x.toString(16) as any).join(":")}\n`;
+        str += `targetAddress: ${this.connection.targetAddress.map((x) => x.toString(16) as any).join(":")}\n`;
         str += `localIp: ${PacketUtils.ipv4ToString(this.connection.localIp)}\n`;
         str += `targetIp: ${PacketUtils.ipv4ToString(this.connection.targetIp)}\n`;
         str += `localPort: ${this.connection.localPort}\n`;
@@ -333,23 +345,23 @@ class TcpServerSession extends EventEmitter {
     }
 }
 
-var connections = new Map<string, TcpServerSession>();
+const connections = new Map<string, TcpServerSession>();
 
-export default function (buffer: Buffer, write: Function, next: Function) {
+export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
 
-    if (PacketUtils.isIPv4(buffer)) {
-        if (!PacketUtils.isTCP(buffer)) return next();
-    } else if (PacketUtils.isIPv6(buffer)) {
-        if (!PacketUtils.isTCPForIpv6(buffer)) return next();
+    if (PacketUtils.isIPv4(data)) {
+        if (!PacketUtils.isTCP(data)) { return next(); }
+    } else if (PacketUtils.isIPv6(data)) {
+        if (!PacketUtils.isTCPForIpv6(data)) { return next(); }
     } else {
         return next();
     }
 
-    const tcpPacket: TcpPacket = TcpPacketFormatter.format(buffer);
+    const tcpPacket: TcpPacket = TcpPacketFormatter.format(data);
     const tcpConnectionId: string = PacketUtils.getConnectionId(tcpPacket);
 
     let session = connections.get(tcpConnectionId);
-    if (session == undefined || session == null) {
+    if (session === undefined || session == null) {
         session = new TcpServerSession({
             ipversion: tcpPacket.version === 4 ? EthernetType.IPv4 : EthernetType.IPv6,
             localAddress: tcpPacket.sourceAddress,
@@ -361,12 +373,12 @@ export default function (buffer: Buffer, write: Function, next: Function) {
             localReceiveWindow: 65535,
             targetReceiveWindow: tcpPacket.window,
         }, write);
-        session.once("closed", function () {
+        session.once("closed", () => {
             delete connections[tcpConnectionId];
             // console.log("bye bye", PacketUtils.ipAddressToString(tcpPacket.destinationIp), "source port", session.connection.targetPort);
         });
         connections.set(tcpConnectionId, session);
         // console.log("connect", PacketUtils.ipAddressToString(tcpPacket.destinationIp), "source port", tcpPacket.sourcePort);
     }
-    session.dataRouter(buffer, tcpPacket);
+    session.dataRouter(data, tcpPacket);
 }

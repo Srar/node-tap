@@ -1,7 +1,7 @@
 /*
 
     AEAD Code From: https://github.com/blinksocks/ (Apache License 2.0)
-   
+
 */
 
 import * as crypto from "crypto";
@@ -23,6 +23,7 @@ const INFO_STR = "ss-subkey";
  * @returns {Buffer}
  */
 function hmac(algorithm, key, buffer): Buffer {
+    // tslint:disable-next-line:no-shadowed-variable
     const hmac = crypto.createHmac(algorithm, key);
     return hmac.update(buffer).digest();
 }
@@ -94,10 +95,11 @@ function getRandomChunks(buffer: Buffer, min: number, max: number): Array<Buffer
  */
 export function numberToBuffer(num: number, len: number = 2, bigEndian: boolean = true): Buffer {
     if (len < 1) {
-        throw Error('len must be greater than 0');
+        throw Error("len must be greater than 0");
     }
 
-    const isOutOfRange = num > parseInt(`0x${'ff'.repeat(len)}`);
+    // tslint:disable-next-line:radix
+    const isOutOfRange = num > parseInt(`0x${"ff".repeat(len)}`);
     if (isOutOfRange) {
         throw Error(`Number ${num} is too big to put into a ${len} byte(s) size buffer`);
     }
@@ -156,7 +158,7 @@ export default class AEADCryotoProcess {
             if (this.dataCache.length < this.saltLength) {
                 return null;
             }
-            let salt = this.dataCache.slice(0, this.saltLength);
+            const salt = this.dataCache.slice(0, this.saltLength);
             this.decipherKey = HKDF("sha1", salt, this.cryptoKeyIV.key, INFO_STR, this.keyLength);
             this.dataCache = this.dataCache.slice(this.saltLength);
             return this.decryptData();
@@ -166,7 +168,7 @@ export default class AEADCryotoProcess {
 
         while (true) {
             if (this.dataCache.length < MIN_CHUNK_LEN) {
-                return (decryptedData.length == 0 ? null : decryptedData);
+                return (decryptedData.length === 0 ? null : decryptedData);
             }
 
             /**
@@ -177,24 +179,24 @@ export default class AEADCryotoProcess {
              *   |    2    |    Fixed    |    Variable    |    Fixed     |
              *   +---------+-------------+----------------+--------------+
              *
-             **/
+             */
 
-            let dataLength: number = this.getDataLength(this.dataCache);
+            const dataLength: number = this.getDataLength(this.dataCache);
             if (dataLength == null) {
-                return (decryptedData.length == 0 ? null : decryptedData);
+                return (decryptedData.length === 0 ? null : decryptedData);
             }
 
-            let fullChunkSize: number = 2 + TAG_SIZE + dataLength + TAG_SIZE;
+            const fullChunkSize: number = 2 + TAG_SIZE + dataLength + TAG_SIZE;
 
             if (this.dataCache.length < fullChunkSize) {
                 this.rollbackDecipherNonce();
-                return (decryptedData.length == 0 ? null : decryptedData);
+                return (decryptedData.length === 0 ? null : decryptedData);
             }
 
-            if (this.dataCache.length == fullChunkSize) {
+            if (this.dataCache.length === fullChunkSize) {
                 decryptedData = Buffer.concat([decryptedData, this.decryptChunk(this.dataCache)]);
                 this.dataCache = Buffer.allocUnsafe(0);
-                return (decryptedData.length == 0 ? null : decryptedData);
+                return (decryptedData.length === 0 ? null : decryptedData);
             }
 
             if (this.dataCache.length > fullChunkSize) {
@@ -213,15 +215,15 @@ export default class AEADCryotoProcess {
     }
 
     private getDataLength(data: Buffer): number {
-        let encLen: Buffer = this.dataCache.slice(0, 2);
-        let lenTag: Buffer = this.dataCache.slice(2, 2 + TAG_SIZE);
+        const encLen: Buffer = this.dataCache.slice(0, 2);
+        const lenTag: Buffer = this.dataCache.slice(2, 2 + TAG_SIZE);
 
-        let dataLengthBuffer: Buffer = this.decrypt(encLen, lenTag);
+        const dataLengthBuffer: Buffer = this.decrypt(encLen, lenTag);
         if (dataLengthBuffer === null) {
             return null;
         }
 
-        let dataLength = dataLengthBuffer.readUInt16BE(0);
+        const dataLength = dataLengthBuffer.readUInt16BE(0);
         if (dataLength > MAX_CHUNK_SPLIT_LEN) {
             return null;
         }
@@ -242,7 +244,7 @@ export default class AEADCryotoProcess {
         const nonce = numberToBuffer(this.decipherNonce, this.nonceLength, false);
         const decipher = crypto.createDecipheriv(this.cryptoName, this.decipherKey, nonce);
         decipher.setAuthTag(tag);
-        let plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
+        const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
         this.decipherNonce++;
         return plaintext;
     }
@@ -253,18 +255,20 @@ export default class AEADCryotoProcess {
         }
     }
 
+    // tslint:disable-next-line:member-ordering
     public encryptDataWithoutStream(data: Buffer): Buffer {
         const salt: Buffer = crypto.randomBytes(this.saltLength);
         const cipherKey: Buffer = HKDF("sha1", salt, this.cryptoKeyIV.key, INFO_STR, this.keyLength);
         const nonce = numberToBuffer(0, this.nonceLength, false);
-    
+
         const cipher: crypto.Cipher = crypto.createCipheriv(this.cryptoName, cipherKey, nonce);
         const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
         const tag = cipher.getAuthTag();
- 
+
         return Buffer.concat([salt, ciphertext, tag]);
     }
 
+    // tslint:disable-next-line:member-ordering
     public decryptDataWithoutStream(data: Buffer): Buffer {
         if (data.length < this.saltLength) {
             throw new Error("Too short salt.");
@@ -275,7 +279,7 @@ export default class AEADCryotoProcess {
             throw new Error("Too short verify data.");
         }
         const [encData, dataTag] = [data.slice(this.saltLength, -TAG_SIZE), data.slice(-TAG_SIZE)];
-        
+
         const nonce = numberToBuffer(0, this.nonceLength, false);
         const decipher = crypto.createDecipheriv(this.cryptoName, decipherKey, nonce);
         decipher.setAuthTag(dataTag);

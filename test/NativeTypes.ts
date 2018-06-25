@@ -1,26 +1,26 @@
 export interface DeviceInfo  {
-    name: string,
-    description: string,
-    type: number,
-    index: number,
-    address: Buffer,
-    dhcpEnable: boolean,
-    currentIpAddress: string,
-    gatewayIpAddress: string,
-    dhcpServer: string,
-    primaryWinsServer: string,
-    secondaryWinsServer: string
-};
+    name: string;
+    description: string;
+    type: number;
+    index: number;
+    address: Buffer;
+    dhcpEnable: boolean;
+    currentIpAddress: string;
+    gatewayIpAddress: string;
+    dhcpServer: string;
+    primaryWinsServer: string;
+    secondaryWinsServer: string;
+}
 
 export interface IpforwardEntry {
-    destIp: string,
-    netMask: string,
-    nextHop: string,
-    interfaceIndex: number,
-    type: IpforwardEntryType,
-    proto: IpforwardEntryProto,
-    age: number,
-    metric1: number,
+    destIp: string;
+    netMask: string;
+    nextHop: string;
+    interfaceIndex: number;
+    type: IpforwardEntryType;
+    proto: IpforwardEntryProto;
+    age: number;
+    metric1: number;
 }
 
 export enum IpforwardEntryType {

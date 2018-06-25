@@ -1,13 +1,15 @@
 import {
     BasePacket,
-    EthernetType
-} from "../PacketsStruct"
+    EthernetType,
+} from "../PacketsStruct";
 
 export default class BasePacketFormatter {
 
-    static build(obj: BasePacket) {
-        var typeBuffer = Buffer.alloc(2);
-        if (obj.type == undefined) obj.type = EthernetType.IPv4;
+    public static build(obj: BasePacket) {
+        const typeBuffer = Buffer.alloc(2);
+        if (obj.type === undefined) {
+            obj.type = EthernetType.IPv4;
+        }
         switch (obj.type) {
             case EthernetType.IPv4:
                 typeBuffer[0] = 0x08;
@@ -25,18 +27,22 @@ export default class BasePacketFormatter {
         return Buffer.concat([
             obj.destinaltionAddress,
             obj.sourceAddress,
-            typeBuffer
+            typeBuffer,
         ], 14);
     }
 
-    static format(bufs: Buffer): BasePacket {
-        var ethernetType: EthernetType = EthernetType.IPv4;
-        if (bufs[12] == 0x08 && bufs[13] == 0x06) ethernetType = EthernetType.ARP;
-        if (bufs[12] == 0x86 && bufs[13] == 0xDD) ethernetType = EthernetType.IPv6;
+    public static format(bufs: Buffer): BasePacket {
+        let ethernetType: EthernetType = EthernetType.IPv4;
+        if (bufs[12] === 0x08 && bufs[13] === 0x06) {
+            ethernetType = EthernetType.ARP;
+        }
+        if (bufs[12] === 0x86 && bufs[13] === 0xDD) {
+            ethernetType = EthernetType.IPv6;
+        }
         return {
             sourceAddress: bufs.slice(0, 6),
             destinaltionAddress: bufs.slice(6, 12),
             type: ethernetType,
-        }
+        };
     }
 }

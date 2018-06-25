@@ -1,27 +1,29 @@
-import PacketUtils from "../PacketUtils"
-import ArpPacketFormatter from "../formatters/ArpPacketFormatter"
-import DeviceConfiguration from "../DeviceConfiguration"
+import PacketUtils from "../PacketUtils";
+import ArpPacketFormatter from "../formatters/ArpPacketFormatter";
+import DeviceConfiguration from "../DeviceConfiguration";
 
 
-export default function (data: Buffer, write: Function, next: Function) {
+export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
     if (!PacketUtils.isARP(data)) {
         return next();
     }
 
-    var arpPacket = ArpPacketFormatter.format(<Buffer>data);
+    const arpPacket = ArpPacketFormatter.format(data as Buffer);
 
-    if (PacketUtils.ipv4ToString(arpPacket.senderIpAdress) != DeviceConfiguration.LOCAL_IP_ADDRESS)
+    if (PacketUtils.ipv4ToString(arpPacket.senderIpAdress) !== DeviceConfiguration.LOCAL_IP_ADDRESS) {
         return;
+    }
 
-    if (PacketUtils.ipv4ToString(arpPacket.targetIpAddeess) != DeviceConfiguration.GATEWAY_IP_ADDRESS)
+    if (PacketUtils.ipv4ToString(arpPacket.targetIpAddeess) !== DeviceConfiguration.GATEWAY_IP_ADDRESS) {
         return;
+    }
 
-    var gatewayMac: Buffer = Buffer.allocUnsafe(6);
-    DeviceConfiguration.GATEWAY_ADDRESS.split(":").forEach(function (item, index) {
-        gatewayMac[index] = parseInt(`0x${item}`);
+    const gatewayMac: Buffer = Buffer.allocUnsafe(6);
+    DeviceConfiguration.GATEWAY_ADDRESS.split(":").forEach((item, index) => {
+        gatewayMac[index] = parseInt(`0x${item}`, 16);
     });
 
-    var responsePacket: Buffer = ArpPacketFormatter.build({
+    const responsePacket: Buffer = ArpPacketFormatter.build({
         sourceAddress: gatewayMac,
         destinaltionAddress: arpPacket.destinaltionAddress,
         /* 1 */

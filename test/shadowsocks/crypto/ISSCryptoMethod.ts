@@ -1,4 +1,3 @@
-import ICryptoKeyIV from "./ICryptoKeyIV";
 
 interface ISSCryptoMethod {
     encryptData(data: Buffer): Buffer;
@@ -6,8 +5,9 @@ interface ISSCryptoMethod {
     getCryptoName(): string;
 }
 
-export type ISSCryptoConstructor = { 
-    new(password: string): ISSCryptoMethod 
+// tslint:disable-next-line:interface-over-type-literal
+export type ISSCryptoConstructor = {
+    new(password: string): ISSCryptoMethod;
 };
 
 export default ISSCryptoMethod;

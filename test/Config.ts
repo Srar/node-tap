@@ -1,5 +1,4 @@
-
-var config = {};
+const config = {};
 
 export default class Config {
 
@@ -8,15 +7,11 @@ export default class Config {
     }
 
     public static get(key?: string): any {
-        if(key == undefined) {
+        if (key === undefined) {
             return config;
         }
 
-        var value: any = config[key];
-        if (value == undefined) {
-            return null;
-        }
-        return value;
+        return config[key];
     }
 
     public static remove(key: string) {

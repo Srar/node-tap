@@ -1,13 +1,11 @@
 /*
 
     AEAD Code From: https://github.com/blinksocks/ (Apache License 2.0)
-   
+
 */
 
-import * as crypto from "crypto"
-import ISSCryptoMethod from "../ISSCryptoMethod"
-import AEADCryotoProcess from "./Share/AEADCryotoProcess"
-
+import ISSCryptoMethod from "../ISSCryptoMethod";
+import AEADCryotoProcess from "./Share/AEADCryotoProcess";
 
 export default class AES128GCM implements ISSCryptoMethod {
 
@@ -27,7 +25,7 @@ export default class AES128GCM implements ISSCryptoMethod {
             AES128GCM.keyLength,
             AES128GCM.saltLength,
             AES128GCM.nonceLength,
-            password
+            password,
         );
     }
 

@@ -1,5 +1,4 @@
 
-
 export default class DeviceConfiguration {
     public static readonly LOCAL_ADDRESS: string = "";
     public static readonly GATEWAY_ADDRESS: string = "00:ff:b9:5a:d2:d5";

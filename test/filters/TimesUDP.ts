@@ -1,8 +1,9 @@
+// tslint:disable-next-line:no-var-requires
 const Cap = require("cap").Cap;
-import * as raw from "raw-socket"
+import * as raw from "raw-socket";
 
-import Config from "../Config"
-import PacketUtils from "../PacketUtils"
+import Config from "../Config";
+import PacketUtils from "../PacketUtils";
 
 function registerXTUdp() {
     const XTUdp: number = Config.get("XTUdp");
@@ -22,24 +23,29 @@ function registerXTUdp() {
     const bufSize = 10 * 1024 * 1024;
     const buffer = Buffer.alloc(65535);
     const linkType = cap.open(device, filter, bufSize, buffer);
+    // tslint:disable-next-line:no-unused-expression
     cap.setMinBytes && cap.setMinBytes(0);
 
     /* 注册RawScoket */
     const rawsocket = raw.createSocket({
-        protocol: raw.Protocol.UDP
+        protocol: raw.Protocol.UDP,
     });
     rawsocket.setOption(raw.SocketLevel.IPPROTO_IP, raw.SocketOption.IP_HDRINCL, new Buffer([0x00, 0x00, 0x00, 0x01]), 4);
 
-    const SPECIAL_TTL: number = 0x7B; // 123 
-    cap.on("packet", function (nbytes, trunc) {
+    const SPECIAL_TTL: number = 0x7B; // 123
+    cap.on("packet",  (nbytes, trunc) => {
         /* Ethernet + IP/TCP */
-        if (nbytes < 34) return;
-        if (buffer[22] == SPECIAL_TTL) return;
+        if (nbytes < 34) {
+            return;
+        }
+        if (buffer[22] === SPECIAL_TTL) {
+            return;
+        }
         buffer[22] = SPECIAL_TTL;
         const sendingBuffer = buffer.slice(14, nbytes);
         const targetIpAddress: string = PacketUtils.ipToString(sendingBuffer.slice(16, 20));
         for (let i = 1; i < XTUdp; i++) {
-            rawsocket.send(sendingBuffer, 0, sendingBuffer.length, targetIpAddress, function (error, bytes) {
+            rawsocket.send(sendingBuffer, 0, sendingBuffer.length, targetIpAddress, (error, bytes) => {
                 if (error) {
                     console.error(error);
                 }
@@ -50,6 +56,6 @@ function registerXTUdp() {
 
 registerXTUdp();
 
-export default function (data: Buffer, write: Function, next: Function) {
+export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
     next();
 }

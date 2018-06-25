@@ -1,5 +1,3 @@
-import * as crypto from "crypto";
-
 import ISSCryptoMethod from "../ISSCryptoMethod";
 import ICryptoKeyIV from "../ICryptoKeyIV";
 
@@ -19,26 +17,26 @@ export default class AES256CFB implements ISSCryptoMethod {
             return;
         }
         this.cryptoKeyIV = CryptoTools.generateKeyIVByPassword(this.password, AES256CFB.keyLength, AES256CFB.ivLength);
-        this.cryptoProcess = new AESCryptoProcess(AES256CFB.cryptoName, this.cryptoKeyIV.key, this.cryptoKeyIV.iv)
+        this.cryptoProcess = new AESCryptoProcess(AES256CFB.cryptoName, this.cryptoKeyIV.key, this.cryptoKeyIV.iv);
     }
 
-    encryptData(data: Buffer): Buffer {
+    public encryptData(data: Buffer): Buffer {
         return this.cryptoProcess.encryptData(data);
     }
 
-    decryptData(data: Buffer): Buffer {
+    public decryptData(data: Buffer): Buffer {
         return this.cryptoProcess.decryptData(data);
     }
 
-    encryptDataWithoutStream(data: Buffer): Buffer {
+    public encryptDataWithoutStream(data: Buffer): Buffer {
         return this.cryptoProcess.encryptDataWithoutStream(data);
     }
 
-    decryptDataWithoutStream(data: Buffer): Buffer {
+    public decryptDataWithoutStream(data: Buffer): Buffer {
         return this.cryptoProcess.decryptDataWithoutStream(data);
     }
 
-    getCryptoName(): string {
+    public getCryptoName(): string {
         return AES256CFB.cryptoName;
     }
 }

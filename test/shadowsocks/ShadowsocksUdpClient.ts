@@ -1,8 +1,8 @@
-import * as dgram from "dgram"
-import * as EventEmitter from "events"
+import * as dgram from "dgram";
+import * as EventEmitter from "events";
 
-import SSCrypto from "./crypto/SSCrypto"
-import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter"
+import SSCrypto from "./crypto/SSCrypto";
+import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter";
 
 
 export default class ShadowsocksUdpClient extends EventEmitter {
@@ -25,7 +25,7 @@ export default class ShadowsocksUdpClient extends EventEmitter {
         this.header = ShadowsocksFormatter.build({
             version: isIPv4 ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
             address: this.targetHost,
-            port: this.targetPort
+            port: this.targetPort,
         });
         this.socket = dgram.createSocket("udp4");
         this.socket.on("message", this.data.bind(this));
@@ -33,7 +33,7 @@ export default class ShadowsocksUdpClient extends EventEmitter {
     }
 
     public write(data: Buffer) {
-        var buffer = this.method.encryptDataWithoutStream(Buffer.concat([this.header, data]));
+        const buffer = this.method.encryptDataWithoutStream(Buffer.concat([this.header, data]));
         this.socket.send(buffer, 0, buffer.length, this.port, this.host);
     }
 

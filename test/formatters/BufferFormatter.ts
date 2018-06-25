@@ -14,8 +14,8 @@ export default class BufferFormatter {
     }
 
     public readByte(increase: boolean = true): number {
-        var byte = this.buffer[this.offset];
-        if(increase) {
+        const byte = this.buffer[this.offset];
+        if (increase) {
             this.increaseOffset(1);
         }
         return byte;
@@ -36,8 +36,8 @@ export default class BufferFormatter {
     }
 
     public readBuffer(length?: number): Buffer {
-        var buffer;
-        if (length == undefined) {
+        let buffer;
+        if (length === undefined) {
             buffer = this.buffer.slice(this.offset);
             this.setOffset(buffer.length);
         } else {
@@ -48,16 +48,16 @@ export default class BufferFormatter {
     }
 
     public readUInt16BE(increase: boolean = true): number {
-        var value = this.buffer.readUInt16BE(this.offset);
-        if(increase) {
+        const value = this.buffer.readUInt16BE(this.offset);
+        if (increase) {
             this.increaseOffset(2);
         }
         return value;
     }
 
     public readUInt32BE(increase: boolean = true): number {
-        var value = this.buffer.readUInt32BE(this.offset);
-        if(increase) {
+        const  value = this.buffer.readUInt32BE(this.offset);
+        if (increase) {
             this.increaseOffset(4);
         }
         return value;
@@ -84,7 +84,7 @@ export default class BufferFormatter {
     public increaseOffset(value: number) {
         this.setOffset(this.offset + value);
     }
-    
+
     public getBuffer(): Buffer {
         return this.buffer;
     }

@@ -1,14 +1,11 @@
 import {
-    IpProtocol,
     Icmpv6Packet,
-} from "../PacketsStruct"
-import * as raw from "raw-socket"
-import PacketUtils from "../PacketUtils"
-import DeviceConfiguration from "../DeviceConfiguration"
-import IpacketFormatter from "../formatters/IpPacketFormatter"
-import Icmpv6Formatter from "../formatters/Icmpv6Formatter"
+} from "../PacketsStruct";
+import PacketUtils from "../PacketUtils";
+import DeviceConfiguration from "../DeviceConfiguration";
+import Icmpv6Formatter from "../formatters/Icmpv6Formatter";
 
-export default function (data: Buffer, write: Function, next: Function) {
+export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
     if (!PacketUtils.isIPv6(data)) {
         return next();
     }
@@ -35,11 +32,11 @@ export default function (data: Buffer, write: Function, next: Function) {
     }
 
     const gatewayMac: Buffer = Buffer.allocUnsafe(6);
-    DeviceConfiguration.GATEWAY_ADDRESS.split(":").forEach(function (item, index) {
-        gatewayMac[index] = parseInt(`0x${item}`);
+    DeviceConfiguration.GATEWAY_ADDRESS.split(":").forEach((item, index) => {
+        gatewayMac[index] = parseInt(`0x${item}`, 16);
     });
 
-    let responsePacket: Icmpv6Packet = { ...packet };
+    const responsePacket: Icmpv6Packet = { ...packet };
     responsePacket.sourceAddress = gatewayMac;
     responsePacket.destinaltionAddress = packet.options.slice(packet.options.length - 6);
     responsePacket.sourceIp = packet.targetAddress;

@@ -1,10 +1,10 @@
-
+// tslint:disable-next-line:no-var-requires
 const native = require("../index.js");
 
-import * as path from "path"
-import * as iconv from "iconv-lite"
-import * as cprocess from "child_process"
-import * as NativeTypes from "./NativeTypes"
+import * as path from "path";
+import * as iconv from "iconv-lite";
+import * as cprocess from "child_process";
+import * as NativeTypes from "./NativeTypes";
 
 const TAP_IOCTL_GET_MTU = CTL_CODE(0x00000022, 3, 0, 0);
 const TAP_IOCTL_SET_MEDIA_STATUS = CTL_CODE(0x00000022, 6, 0, 0);
@@ -16,7 +16,7 @@ const TRUE = new Buffer([0x01, 0x00, 0x00, 0x00]);
 const FALSE = new Buffer([0x00, 0x00, 0x00, 0x00]);
 
 function CTL_CODE(deviceType, func, method, access) {
-    return ((deviceType) << 16) | ((access) << 14) | ((func) << 2) | (method)
+    return ((deviceType) << 16) | ((access) << 14) | ((func) << 2) | (method);
 }
 
 export class NotFoundError extends Error {
@@ -25,6 +25,7 @@ export class NotFoundError extends Error {
     }
 }
 
+// tslint:disable-next-line:max-classes-per-file
 export default class TAPControl {
 
     private static tapControlObject: TAPControl = null;
@@ -37,9 +38,9 @@ export default class TAPControl {
         if (!TAPControl.checkAdapterIsInstalled()) {
             throw new NotFoundError("Openvpn adapter not found.");
         }
-        const allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
+        const allDevicesInfo: Array<NativeTypes.DeviceInfo> = native.N_GetAllDevicesInfo() as Array<NativeTypes.DeviceInfo>;
         for (const device of allDevicesInfo) {
-            if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") != -1) {
+            if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") !== -1) {
                 this.deviceInfo = device;
             }
         }
@@ -53,9 +54,9 @@ export default class TAPControl {
     }
 
     public static checkAdapterIsInstalled(): boolean {
-        const allDevicesInfo: Array<NativeTypes.DeviceInfo> = <Array<NativeTypes.DeviceInfo>>native.N_GetAllDevicesInfo();
+        const allDevicesInfo: Array<NativeTypes.DeviceInfo> = native.N_GetAllDevicesInfo() as Array<NativeTypes.DeviceInfo>;
         for (const device of allDevicesInfo) {
-            if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") != -1) {
+            if (device.description.toLocaleLowerCase().indexOf("tap-windows adapter v9") !== -1) {
                 return true;
             }
         }
@@ -63,11 +64,11 @@ export default class TAPControl {
     }
 
     public static installAdapter(installerPath: string): number {
-        const result = cprocess.spawnSync(installerPath, ["install","OemVista.inf","tap0901"], {
-            cwd: path.dirname(installerPath)
-        } );
+        const result = cprocess.spawnSync(installerPath, ["install", "OemVista.inf", "tap0901"], {
+            cwd: path.dirname(installerPath),
+        });
         const errorMessage: string = iconv.decode(result.stderr, "cp936").toString().trim();
-        if (errorMessage.length != 0) {
+        if (errorMessage.length !== 0) {
             process.stderr.write(errorMessage);
             process.stdout.write("\n");
         }

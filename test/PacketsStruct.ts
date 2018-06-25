@@ -6,21 +6,21 @@ export enum EthernetType {
 }
 
 export interface BasePacket {
-    sourceAddress?: Buffer,
-    destinaltionAddress?: Buffer,
-    type?: EthernetType,
+    sourceAddress?: Buffer;
+    destinaltionAddress?: Buffer;
+    type?: EthernetType;
 }
 
 export interface ArpPacket extends BasePacket {
-    hardwareType: Buffer,
-    protocolType: Buffer,
-    hardwareSize: Buffer,
-    protocalSize: Buffer,
-    opCode: Buffer,
-    senderMacAddress: Buffer,
-    senderIpAdress: Buffer,
-    targetMacAddress: Buffer,
-    targetIpAddeess: Buffer,
+    hardwareType: Buffer;
+    protocolType: Buffer;
+    hardwareSize: Buffer;
+    protocalSize: Buffer;
+    opCode: Buffer;
+    senderMacAddress: Buffer;
+    senderIpAdress: Buffer;
+    targetMacAddress: Buffer;
+    targetIpAddeess: Buffer;
 }
 
 export enum IpProtocol {
@@ -45,72 +45,72 @@ export enum IpProtocol {
     SCTP = 132,
     UDPLite = 136,
     MPLSInIP = 137,
-    IPv4_PSEUDO_LENGTH = 12
+    IPv4_PSEUDO_LENGTH = 12,
 }
 
 export interface IpPacket extends BasePacket {
-    version?: number,
-    ipHeaderLength?: number,
-    TOS?: number,
-    totalLength?: number,
-    identification?: number,
-    flags?: number,
-    fragOffset?: number,
-    TTL?: number,
-    protocol?: IpProtocol,
-    checksum?: number,
-    sourceIp?: Buffer,
-    destinationIp?: Buffer,
-    tcpipPayload?: Buffer,
+    version?: number;
+    ipHeaderLength?: number;
+    TOS?: number;
+    totalLength?: number;
+    identification?: number;
+    flags?: number;
+    fragOffset?: number;
+    TTL?: number;
+    protocol?: IpProtocol;
+    checksum?: number;
+    sourceIp?: Buffer;
+    destinationIp?: Buffer;
+    tcpipPayload?: Buffer;
 }
 
 export interface Ipv6Packet extends BasePacket {
     /* 4 bits version, 8 bits TC, 20 bits flow-ID */
-    version?: number,
-    flow?: number
-    payloadLength?: number,
-    protocol?: IpProtocol,
-    hopLimit?: number,
-    sourceIp?: Buffer,
-    destinationIp?: Buffer,
-    tcpipPayload?: Buffer,
+    version?: number;
+    flow?: number;
+    payloadLength?: number;
+    protocol?: IpProtocol;
+    hopLimit?: number;
+    sourceIp?: Buffer;
+    destinationIp?: Buffer;
+    tcpipPayload?: Buffer;
 }
 
 export interface Icmpv6Packet extends Ipv6Packet {
-    icmpv6type: number,
-    code: number,
-    checksum: number,
-    reserved: Buffer,
-    targetAddress: Buffer,
-    options?: Buffer,
+    icmpv6type: number;
+    code: number;
+    checksum: number;
+    reserved: Buffer;
+    targetAddress: Buffer;
+    options?: Buffer;
 }
 
 export interface TcpPacket extends IpPacket {
-    sourcePort?: number,
-    destinationPort?: number,
-    sequenceNumber?: number,
-    acknowledgmentNumber?: number,
-    tcpHeaderLength?: number,
-    FIN?: boolean,
-    SYN?: boolean,
-    RST?: boolean,
-    PSH?: boolean,
-    ACK?: boolean,
-    URG?: boolean,
-    ECE?: boolean,
-    CWR?: boolean,
-    NS?: boolean,
-    window?: number,
-    checksum?: number,
-    urgent?: number,
-    options?: Buffer,
-    payload?: Buffer,
+    sourcePort?: number;
+    destinationPort?: number;
+    sequenceNumber?: number;
+    acknowledgmentNumber?: number;
+    tcpHeaderLength?: number;
+    FIN?: boolean;
+    SYN?: boolean;
+    RST?: boolean;
+    PSH?: boolean;
+    ACK?: boolean;
+    URG?: boolean;
+    ECE?: boolean;
+    CWR?: boolean;
+    NS?: boolean;
+    window?: number;
+    checksum?: number;
+    urgent?: number;
+    options?: Buffer;
+    payload?: Buffer;
 }
 
 export interface UdpPacket extends IpPacket {
-    sourcePort?: number,
-    destinationPort?: number,
-    totalLength?: number,
-    checksum?: number
-    payload?: Buffer
+    sourcePort?: number;
+    destinationPort?: number;
+    totalLength?: number;
+    checksum?: number;
+    payload?: Buffer;
 }
