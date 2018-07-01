@@ -12,6 +12,7 @@ import PacketUtils from "./PacketUtils";
 import * as cprocess from "child_process";
 import * as NativeTypes from "./NativeTypes";
 import DeviceConfiguration from "./DeviceConfiguration";
+import ShadowsocksPing, { ShadowsocksPingResult } from './shadowsocks/ShadowsocksPing';
 
 // tslint:disable-next-line:no-var-requires
 const optimist = require("optimist")
@@ -125,6 +126,22 @@ async function main() {
         process.exit(-1);
     }
 
+    /* verify shadowsocks server is available */
+    try{
+        const pingResult:ShadowsocksPingResult = await new ShadowsocksPing().ping({
+                address:Config.get("ShadowsocksTcpHost"),
+                port:Config.get("ShadowsocksTcpPort"),
+                passwd:Config.get("ShadowsocksTcpPasswd"),
+                method:Config.get("ShadowsocksTcpMethod"),
+                attempts:10
+        });
+        console.log(`shadowsocks server:${pingResult.address} ping delay max: ${pingResult.max}ms,avg:${pingResult.avg},min:${pingResult.min}`)
+    }catch(error){
+        console.log(error)
+        return;
+    }
+    
+    
     /* 设置OpenVPN网卡 */
     if (!TAPControl.checkAdapterIsInstalled()) {
         console.log("Installing driver...");
@@ -145,9 +162,15 @@ async function main() {
     /* 获取默认网卡 */
     const allDevicesInfo: Array<NativeTypes.DeviceInfo> = native.N_GetAllDevicesInfo() as Array<NativeTypes.DeviceInfo>;
     const defaultGateway: string = (native.N_GetIpforwardEntry() as Array<NativeTypes.IpforwardEntry>)[0].nextHop;
+    // console.log(`${JSON.stringify(native.N_GetIpforwardEntry())}`)
+    // console.log(`默认网卡:${defaultGateway}`);
+    // console.log(`${JSON.stringify(allDevicesInfo)}`)
     let defaultDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
-        if (device.gatewayIpAddress === defaultGateway) {
+        // if (device.gatewayIpAddress === defaultGateway) {
+        //     defaultDevice = device;
+        // }
+        if(device.index == tapInfo.index){
             defaultDevice = device;
         }
     }

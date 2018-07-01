@@ -8,6 +8,7 @@ import {
 import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient";
 import TcpPacketFormatter from "../formatters/TcpPacketFormatter";
 import * as EventEmitter from "events";
+import { ShadowsocksHeaderVersion } from "../shadowsocks/ShadowsocksFormatter";
 
 // tslint:disable-next-line:interface-name
 interface TcpConnection {
@@ -109,7 +110,8 @@ class TcpServerSession extends EventEmitter {
             const tcpAckpacket: Buffer = TcpPacketFormatter.build(ack);
             this.nativeWrite(tcpAckpacket);
             this.state = TcpConnectionState.HandShake_ACK;
-            this.shadowsocks.connect(this.connection.ipversion === EthernetType.IPv4, this.connection.localIp, this.connection.localPort);
+            const addressType: ShadowsocksHeaderVersion = this.connection.ipversion === EthernetType.IPv4?ShadowsocksHeaderVersion.IPv4:ShadowsocksHeaderVersion.IPv6;
+            this.shadowsocks.connect(addressType, this.connection.localIp, this.connection.localPort);
             this.shadowsocks.on("data", this.tcpShadowsocksData.bind(this));
             this.shadowsocks.on("disconnected", this.tcpShadowsocksClosed.bind(this));
             return;
