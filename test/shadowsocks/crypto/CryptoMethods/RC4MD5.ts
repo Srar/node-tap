@@ -24,26 +24,24 @@ export default class RC4MD5 implements ISSCryptoMethod {
     }
 
     public encryptData(data: Buffer): Buffer {
-          if (this.isFirstEncryptData) {
+        if (this.isFirstEncryptData) {
             this.isFirstEncryptData = false;
             this.cryptoKeyIV.iv = crypto.randomBytes(RC4MD5.ivLength);
             const rc4Process: Buffer = CryptoTools.generateRc4Md5KeyByKV(this.cryptoKeyIV);
             this.encryptProcess = crypto.createCipheriv("rc4", rc4Process , "");
             return Buffer.concat([this.cryptoKeyIV.iv, this.encryptProcess.update(data)]);
         }
-        // tslint:disable-next-line:align
         return this.encryptProcess.update(data);
     }
 
     public  decryptData(data: Buffer): Buffer {
-         if (this.isFirstDecryptData) {
+        if (this.isFirstDecryptData) {
             this.isFirstDecryptData = false;
             const decryptIV: Buffer = data.slice(0, RC4MD5.ivLength);
             const rc4Process: Buffer = CryptoTools.generateRc4Md5KeyByKV({ key: this.cryptoKeyIV.key, iv: decryptIV });
             this.decryptProcess = crypto.createDecipheriv("rc4", rc4Process, "");
             return this.decryptProcess.update(data.slice(RC4MD5.ivLength));
         }
-        // tslint:disable-next-line:align
         return this.decryptProcess.update(data);
     }
 

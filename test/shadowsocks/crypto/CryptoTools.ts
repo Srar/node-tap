@@ -18,7 +18,7 @@ export default class CryptoTools {
         }
         const hashBuffer: Buffer = Buffer.concat(hashBuffers);
         const key: Buffer = hashBuffer.slice(0, keyLength);
-        const iv: Buffer = hashBuffer.slice(keyLength, keyLength + ivLength);
+        const iv: Buffer = crypto.randomBytes(ivLength);
         return {
             key,
             iv,

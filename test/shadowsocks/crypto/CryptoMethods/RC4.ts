@@ -24,38 +24,29 @@ export default class RC4 implements ISSCryptoMethod {
     }
 
     public encryptData(data: Buffer): Buffer {
-          if (this.isFirstEncryptData) {
+        if (this.isFirstEncryptData) {
             this.isFirstEncryptData = false;
-            this.cryptoKeyIV.iv = crypto.randomBytes(RC4.ivLength);
             this.encryptProcess = crypto.createCipheriv("rc4", this.cryptoKeyIV.key , "");
-            return Buffer.concat([this.cryptoKeyIV.iv, this.encryptProcess.update(data)]);
         }
-        // tslint:disable-next-line:align
         return this.encryptProcess.update(data);
     }
 
-    public  decryptData(data: Buffer): Buffer {
-         if (this.isFirstDecryptData) {
+    public decryptData(data: Buffer): Buffer {
+        if (this.isFirstDecryptData) {
             this.isFirstDecryptData = false;
-            const decryptIV: Buffer = data.slice(0, RC4.ivLength);
             this.decryptProcess = crypto.createDecipheriv("rc4", this.cryptoKeyIV.key, "");
-            return this.decryptProcess.update(data.slice(RC4.ivLength));
         }
-        // tslint:disable-next-line:align
         return this.decryptProcess.update(data);
     }
 
     public encryptDataWithoutStream(data: Buffer) {
-        this.cryptoKeyIV.iv = crypto.randomBytes(RC4.ivLength);
-        // const rc4Process: Buffer = CryptoTools.generateRc4Md5KeyByKV(this.cryptoKeyIV);
         const encryptProcess = crypto.createCipheriv("rc4", this.cryptoKeyIV.key , "");
-        return Buffer.concat([this.cryptoKeyIV.iv, encryptProcess.update(data)]);
+        return  Buffer.concat([encryptProcess.update(data), encryptProcess.final()]);
     }
 
     public decryptDataWithoutStream(data: Buffer) {
-        const decryptIV: Buffer = data.slice(0, RC4.ivLength);
         const decryptProcess = crypto.createDecipheriv("rc4", this.cryptoKeyIV.key, "");
-        return decryptProcess.update(data.slice(RC4.ivLength));
+        return decryptProcess.update(data);
     }
 
     public getCryptoName(): string {
