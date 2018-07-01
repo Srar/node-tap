@@ -279,7 +279,14 @@ async function main() {
     filters.push(require("./filters/TimesUDP").default);
 
     async function loop() {
-        const data: Buffer = await tapControl.read() as Buffer;
+        let data: Buffer = null;
+        try {
+            data = await tapControl.read() as Buffer;
+        } catch (error) {
+            console.error("Failed to get data from adapter.", error);
+            return setImmediate(loop);
+        }
+
         let index: number = 0;
         function next() {
             const func = filters[index++];
