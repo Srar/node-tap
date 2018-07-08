@@ -85,7 +85,7 @@ export default class ShadowsocksFormatter {
         }
 
         for (let i = 0; i < ipBuffer.length; i++) {
-            buffer[i + (header.version === ShadowsocksHeaderVersion.Domain ? 2 : 1)] = ipBuffer[i];
+            buffer[i + 1] = ipBuffer[i];
         }
         buffer[buffer.length - 2] = ((header.port >> 8) & 0xff);
         buffer[buffer.length - 1] = (header.port & 0xff);

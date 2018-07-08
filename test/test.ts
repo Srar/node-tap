@@ -12,11 +12,12 @@ import PacketUtils from "./PacketUtils";
 import * as cprocess from "child_process";
 import * as NativeTypes from "./NativeTypes";
 import DeviceConfiguration from "./DeviceConfiguration";
+import ShadowsocksPing, {ShadowsocksPingResult} from "./shadowsocks/ShadowsocksPing";
 
 // tslint:disable-next-line:no-var-requires
 const optimist = require("optimist")
     .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --passwd [shadowsocks password] --xtudp [x times udp packets]")
-    .default("xtudp", 1)
+    .default("xtudp", 0)
     .default("host", undefined)
     .default("port", undefined)
     .default("passwd", undefined)
@@ -125,6 +126,22 @@ async function main() {
         process.exit(-1);
     }
 
+    /* verify shadowsocks server is available */
+    try {
+        const pingResult: ShadowsocksPingResult = await new ShadowsocksPing().ping({
+            address: Config.get("ShadowsocksTcpHost"),
+            port: Config.get("ShadowsocksTcpPort"),
+            passwd: Config.get("ShadowsocksTcpPasswd"),
+            method: Config.get("ShadowsocksTcpMethod"),
+            attempts: 10,
+        });
+        console.log(`shadowsocks server:${pingResult.address} ping delay max: ${pingResult.max}ms,avg:${pingResult.avg},min:${pingResult.min}`)
+    }catch(error){
+        console.log(error)
+        return;
+    }
+    
+    
     /* 设置OpenVPN网卡 */
     if (!TAPControl.checkAdapterIsInstalled()) {
         console.log("Installing driver...");
@@ -145,9 +162,15 @@ async function main() {
     /* 获取默认网卡 */
     const allDevicesInfo: Array<NativeTypes.DeviceInfo> = native.N_GetAllDevicesInfo() as Array<NativeTypes.DeviceInfo>;
     const defaultGateway: string = (native.N_GetIpforwardEntry() as Array<NativeTypes.IpforwardEntry>)[0].nextHop;
+    // console.log(`${JSON.stringify(native.N_GetIpforwardEntry())}`)
+    // console.log(`默认网卡:${defaultGateway}`);
+    // console.log(`${JSON.stringify(allDevicesInfo)}`)
     let defaultDevice: NativeTypes.DeviceInfo = null;
     for (const device of allDevicesInfo) {
-        if (device.gatewayIpAddress === defaultGateway) {
+        // if (device.gatewayIpAddress === defaultGateway) {
+        //     defaultDevice = device;
+        // }
+        if (device.index === tapInfo.index) {
             defaultDevice = device;
         }
     }
@@ -183,14 +206,13 @@ async function main() {
     /* 设置路由表 */
     {
         const initCommands: Array<Array<string>> = [
+            ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
+            ["route", "delete", Config.get("DNS")],
             ["netsh", "interface", "ipv4", "set", "interface", `${tapInfo.index}`, "metric=1"],
             ["netsh", "interface", "ipv6", "set", "interface", `${tapInfo.index}`, "metric=1"],
             ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", Config.get("DNS"), "primary"],
             ["netsh", "interface", "ip", "set", "address", `name=${tapInfo.index}`, "static",
                 DeviceConfiguration.LOCAL_IP_ADDRESS, DeviceConfiguration.LOCAL_NETMASK, DeviceConfiguration.GATEWAY_IP_ADDRESS],
-            ["route", "delete", "0.0.0.0", DeviceConfiguration.GATEWAY_IP_ADDRESS],
-            ["route", "delete", Config.get("DNS")],
-
             ["route", "add", Config.get("ShadowsocksTcpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
             ["route", "add", Config.get("ShadowsocksUdpHost"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
         ];
@@ -199,7 +221,7 @@ async function main() {
             initCommands.push(
                 ["route", "add", Config.get("DNS"), "mask", "255.255.255.255", defaultGateway, "metric", "1"],
                 ["netsh", "interface", "ipv4", "set", "dnsservers", `${tapInfo.index}`, "static", DeviceConfiguration.GATEWAY_IP_ADDRESS, "primary"],
-                ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=""`, "validate=no"],
+                ["netsh", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=""`, "validate=no"],
             );
         }
 
@@ -213,7 +235,7 @@ async function main() {
             initCommands.push(
                 ["netsh", "interface", "ipv6", "set", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
                 ["netsh", "interface", "ipv6", "add", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
-                ["netsh.exe", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"],
+                ["netsh", "interface", "ipv6", "set", "dnsserver", `name=${tapInfo.index}`, "source=static", `address=${argv.v6dns}`, "validate=no"],
             );
         }
 
@@ -271,13 +293,15 @@ async function main() {
 
     // tslint:disable-next-line:ban-types
     const filters: Array<Function> = [];
-    filters.push(require("./filters/TCP").default);
+    filters.push(require("./tunnel/ShadowsocksTunnel").default);
     filters.push(require("./filters/DNS").default);
     filters.push(require("./filters/UDP").default);
     filters.push(require("./filters/ARP").default);
     filters.push(require("./filters/NDP").default);
-    filters.push(require("./filters/TimesUDP").default);
-
+    if (Config.get("XTUdp") > 0) {
+        filters.push(require("./filters/TimesUDP").default);
+    }
+    console.log("start...")
     async function loop() {
         let data: Buffer = null;
         try {

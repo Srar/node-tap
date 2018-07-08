@@ -2,9 +2,20 @@ import * as net from "net";
 import * as EventEmitter from "events";
 
 import SSCrypto from "./crypto/SSCrypto";
-import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter";
+import ShadowsocksFormatter, {ShadowsocksHeaderVersion} from "./ShadowsocksFormatter";
+import {Address} from "cluster";
+
+
+export interface ShadowsocksOptions{
+    host   :string,
+    port   :string,
+    method :string,
+    passwd :string,
+}
+
 
 export default class ShadowsocksTcpClient extends EventEmitter {
+
 
     private method: any;
 
@@ -13,30 +24,33 @@ export default class ShadowsocksTcpClient extends EventEmitter {
     private buffersCache: Array<Buffer> = [];
     private isConnected: boolean = false;
 
-    constructor(
-        private host: string,
-        private port: number,
-        password: string, method: string,
-        private isIpv4Address: boolean = true,
-        private targetHost: Buffer = Buffer.allocUnsafe(0),
-        private targetPort: number = 0,
-    ) {
+    constructor(private host: string,
+                private port: number,
+                password: string, method: string,
+                private addressType: ShadowsocksHeaderVersion = ShadowsocksHeaderVersion.IPv4,
+                private targetHost: Buffer = Buffer.allocUnsafe(0),
+                private targetPort: number = 0) {
         super();
         this.method = SSCrypto.createCryptoMethodObject(method, password);
         this.socket.setNoDelay(true);
     }
 
-    public connect(isIpv4Address: boolean, targetHost?: Buffer, targetPort?: number) {
+    public connect(addressType: ShadowsocksHeaderVersion, targetHost?: Buffer, targetPort?: number) {
+
         this.socket.on("data", this.onData.bind(this));
         this.socket.on("error", this.disconnect.bind(this));
         this.socket.connect(this.port, this.host, this.onConnected.bind(this));
+        if (ShadowsocksHeaderVersion) {
+            this.addressType = addressType;
+        }
         if (targetHost) {
+            // if addressType is domain,the first byte is the domain length
             this.targetHost = targetHost;
         }
         if (targetPort) {
             this.targetPort = targetPort;
         }
-        this.isIpv4Address = isIpv4Address;
+
     }
 
     public disconnect() {
@@ -60,7 +74,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
     /* support ipv4, ipv6 without domain */
     private onConnected() {
         const headerBuffer: Buffer = ShadowsocksFormatter.build({
-            version: this.isIpv4Address ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
+            version: this.addressType,
             address: this.targetHost,
             port: this.targetPort,
         });
