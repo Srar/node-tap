@@ -2,14 +2,21 @@ import * as net from "net";
 import * as EventEmitter from "events";
 
 import SSCrypto from "./crypto/SSCrypto";
-import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter";
-import { Address } from "cluster";
+import ShadowsocksFormatter, {ShadowsocksHeaderVersion} from "./ShadowsocksFormatter";
+import {Address} from "cluster";
 
+
+export interface ShadowsocksOptions{
+    host   :string,
+    port   :string,
+    method :string,
+    passwd :string,
+}
 
 
 export default class ShadowsocksTcpClient extends EventEmitter {
 
-    
+
     private method: any;
 
     private readonly socket: net.Socket = new net.Socket();
@@ -17,25 +24,23 @@ export default class ShadowsocksTcpClient extends EventEmitter {
     private buffersCache: Array<Buffer> = [];
     private isConnected: boolean = false;
 
-    constructor(
-        private host: string,
-        private port: number,
-        password: string, method: string,
-        private addressType: ShadowsocksHeaderVersion = ShadowsocksHeaderVersion.IPv4,
-        private targetHost: Buffer = Buffer.allocUnsafe(0),
-        private targetPort: number = 0
-    ) {
+    constructor(private host: string,
+                private port: number,
+                password: string, method: string,
+                private addressType: ShadowsocksHeaderVersion = ShadowsocksHeaderVersion.IPv4,
+                private targetHost: Buffer = Buffer.allocUnsafe(0),
+                private targetPort: number = 0) {
         super();
         this.method = SSCrypto.createCryptoMethodObject(method, password);
         this.socket.setNoDelay(true);
     }
 
     public connect(addressType: ShadowsocksHeaderVersion, targetHost?: Buffer, targetPort?: number) {
-        
+
         this.socket.on("data", this.onData.bind(this));
         this.socket.on("error", this.disconnect.bind(this));
         this.socket.connect(this.port, this.host, this.onConnected.bind(this));
-        if(ShadowsocksHeaderVersion){
+        if (ShadowsocksHeaderVersion) {
             this.addressType = addressType;
         }
         if (targetHost) {
@@ -45,7 +50,7 @@ export default class ShadowsocksTcpClient extends EventEmitter {
         if (targetPort) {
             this.targetPort = targetPort;
         }
-        
+
     }
 
     public disconnect() {

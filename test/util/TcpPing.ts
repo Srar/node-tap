@@ -1,6 +1,6 @@
 import {Socket} from 'net'
 
-export interface Options {
+export interface PingOptions {
     address : string,
     port : number,
     attempts?: number,
@@ -24,10 +24,10 @@ export interface PingResultItem {
 }
 
 export interface IPing{
-    ping(options:Options):any
+    ping(options:PingOptions):any
 }
 export default class TcpPing implements IPing {
-    public ping(options : Options) : Promise < PingResult > {
+    public ping(options : PingOptions) : Promise < PingResult > {
         return new Promise < PingResult > (function (reslove, reject) {
             let i = 0;
             let results : Array < PingResultItem >= [];

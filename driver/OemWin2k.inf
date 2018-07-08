@@ -1,5 +1,5 @@
 ; ****************************************************************************
-; * Copyright (C) 2002-2014 OpenVPN Technologies, Inc.                            *
+; * Copyright (C) 2002-2008 OpenVPN Technologies, Inc.                            *
 ; *  This program is free software; you can redistribute it and/or modify    *
 ; *  it under the terms of the GNU General Public License version 2          *
 ; *  as published by the Free Software Foundation.                           *
@@ -7,21 +7,21 @@
 
 ; SYNTAX CHECKER
 ; cd \WINDDK\3790\tools\chkinf
-; chkinf c:\src\openvpn\tap-win32\i386\oemvista.inf
+; chkinf c:\src\openvpn\tap-win32\i386\oemwin2k.inf
 ; OUTPUT -> file:///c:/WINDDK/3790/tools/chkinf/htm/c%23+src+openvpn+tap-win32+i386+__OemWin2k.htm
 
 ; INSTALL/REMOVE DRIVER
-;   tapinstall install OemVista.inf tapoas
-;   tapinstall update OemVista.inf tapoas
-;   tapinstall remove tapoas
+;   tapinstall install OemWin2k.inf TAP0901
+;   tapinstall update OemWin2k.inf TAP0901
+;   tapinstall remove TAP0901
 
 ;*********************************************************
 ; Note to Developers:
 ;
-; If you are bundling the TAP-Windows driver with your app,
+; If you are bundling the TAP-Win32 driver with your app,
 ; you should try to rename it in such a way that it will
-; not collide with other instances of TAP-Windows defined
-; by other apps.  Multiple versions of the TAP-Windows
+; not collide with other instances of TAP-Win32 defined
+; by other apps.  Multiple versions of the TAP-Win32
 ; driver, each installed by different apps, can coexist
 ; on the same machine if you follow these guidelines.
 ; NOTE: these instructions assume you are editing the
@@ -41,7 +41,7 @@
 ; (5) Change SZDEPENDENCIES in service.h to match what
 ;     you changed tapXXXX to.
 ; (6) Change DeviceDescription and Provider strings.
-; (7) Change PRODUCT_TAP_WIN_DEVICE_DESCRIPTION in constants.h to what you
+; (7) Change PRODUCT_STRING in constants.h to what you
 ;     set DeviceDescription to.
 ;
 ;*********************************************************
@@ -55,11 +55,11 @@
 
 ; This version number should match the version
 ; number given in SOURCES.
-   DriverVer=04/21/2016,9.00.00.21
+   DriverVer=01/22/2008,9.00.00.4
 
 [Strings]
-   DeviceDescription = "TAP-Windows Adapter V9"
-   Provider = "TAP-Windows Provider V9"
+   DeviceDescription = "TAP-Win32 Adapter V9"
+   Provider = "TAP-Win32 Provider V9"
 
 ;----------------------------------------------------------------
 ;                      Manufacturer + Product Section (Done)
@@ -68,8 +68,7 @@
    %Provider% = tap0901, NTamd64
 
 [tap0901.NTamd64]
-   %DeviceDescription% = tap0901.ndi, root\tap0901 ; Root enumerated
-   %DeviceDescription% = tap0901.ndi, tap0901      ; Legacy
+   %DeviceDescription% = tap0901.ndi, tap0901
 
 ;---------------------------------------------------------------
 ;                             Driver Section (Done)
@@ -88,10 +87,7 @@
    CopyFiles       = tap0901.driver, tap0901.files
    AddReg          = tap0901.reg
    AddReg          = tap0901.params.reg
-   Characteristics = 
-   *IfType            = 0x6 ; IF_TYPE_ETHERNET_CSMACD
-   *MediaType         = 0x0 ; NdisMedium802_3
-   *PhysicalMediaType = 14  ; NdisPhysicalMedium802_3
+   Characteristics = 0x81
 
 [tap0901.ndi.Services]
    AddService = tap0901,        2, tap0901.service
