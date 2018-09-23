@@ -9,6 +9,8 @@ import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient";
 import TcpPacketFormatter from "../formatters/TcpPacketFormatter";
 import * as EventEmitter from "events";
 
+const U_INT32_MAXIMUM = 0xffffffff;
+
 // tslint:disable-next-line:interface-name
 interface TcpConnection {
     ipversion: EthernetType;
@@ -134,10 +136,6 @@ class TcpServerSession extends EventEmitter {
             return;
         }
 
-        if (tcpPacket.acknowledgmentNumber > this.currentSeqNum) {
-            this.currentSeqNum = tcpPacket.acknowledgmentNumber;
-        }
-
         this.currentAckNum = tcpPacket.sequenceNumber + tcpPacket.payload.length;
         if (tcpPacket.payload.length > 0) {
             let ack: TcpPacket = {
@@ -158,7 +156,7 @@ class TcpServerSession extends EventEmitter {
             this.tcpShadowsocksData();
         }
 
-        // console.log(this.currentSeqNum, this.currentAckNum, this.currentWindowSize);
+        // console.log(`currentSeqNum: ${this.currentSeqNum} currentAckNum: ${this.currentAckNum} currentWindowSize: ${this.currentWindowSize}`);
     }
 
     // TcpConnectionState.RemoteCloseWating
@@ -231,6 +229,11 @@ class TcpServerSession extends EventEmitter {
         };
         dataPacket = Object.assign(this.buildBaseTcpPacket(data.length), dataPacket);
         this.currentSeqNum = dataPacket.sequenceNumber + dataPacket.payload.length;
+
+        if(this.currentSeqNum >= U_INT32_MAXIMUM) {
+            this.currentSeqNum = this.currentSeqNum - U_INT32_MAXIMUM - 1;
+        }
+        
         const fullPacket = TcpPacketFormatter.build(dataPacket);
         this.nativeWrite(fullPacket);
     }
@@ -282,6 +285,7 @@ class TcpServerSession extends EventEmitter {
 
     public buildBaseTcpPacket(dataLength: number = 0): TcpPacket {
         this.currentIdNum = PacketUtils.increaseNumber(this.currentIdNum, 65536);
+
         return {
             type: this.connection.ipversion,
             version: this.connection.ipversion === EthernetType.IPv4 ? 4 : 6,
@@ -326,10 +330,6 @@ class TcpServerSession extends EventEmitter {
             }
         }
         return bufsArray;
-    }
-
-    private getRandomNumber(minimum: number, maximum: number): number {
-        return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
     }
 
     // tslint:disable-next-line:member-ordering
