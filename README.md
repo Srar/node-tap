@@ -72,6 +72,10 @@ Q: Windows7启动后无效果.
 
 A: 卸载`npcap`使用[`winpcap`](https://www.winpcap.org/).
 
+Q: 启动后无效果.
+
+A: 检查系统内是否存在多个TAP虚拟网卡, 请只保留一个TAP虚拟网卡其余TAP虚拟网卡请卸载.
+
 # 参考
 * [net-speeder](https://github.com/snooda/net-speeder)
 * [uIP](https://en.wikipedia.org/wiki/UIP_(micro_IP))
