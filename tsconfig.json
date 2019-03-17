@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "baseUrl": "./test/",
+        "baseUrl": "./src/",
         "outDir": "./output/",
         "target": "es6",
         "module": "commonjs",
