@@ -6,7 +6,7 @@
     "scripts": {
         "build": ".\\node_modules\\.bin\\tsc --p tsconfig.json",
         "compile": "node-gyp rebuild",
-        "package": ".\\node_modules\\.bin\\pkg output\\test.js --targets node8-win-x64 -o .\\sstap.exe"
+        "package": ".\\node_modules\\.bin\\pkg output\\app.js --targets node8-win-x64 -o .\\sstap.exe"
     },
     "keywords": [
         "nodejs",
@@ -27,7 +27,7 @@
     "author": "Srar",
     "license": "ISC",
     "dependencies": {
-        "@types/node": "^8.5.7",
+        "@types/node": "^8.10.50",
         "cap": "^0.2.0",
         "iconv-lite": "^0.4.19",
         "ip6": "^0.1.5",
@@ -36,8 +36,8 @@
         "optimist": "^0.6.1",
         "pkg": "^4.3.0",
         "raw-socket": "^1.5.2",
-        "ts-node": "^4.1.0",
-        "typescript": "^2.6.2"
+        "ts-node": "^8.3.0",
+        "typescript": "^3.5.3"
     },
     "gypfile": true,
     "devDependencies": {
