@@ -2,7 +2,7 @@ import * as dgram from "dgram";
 import * as EventEmitter from "events";
 
 import SSCrypto from "./crypto/SSCrypto";
-import ShadowsocksFormatter, { ShadowsocksHeaderVersion } from "./ShadowsocksFormatter";
+import ShadowsocksFormatter, { ShadowsocksHeaderVersion, ShadowsocksHeader } from "./ShadowsocksFormatter";
 
 
 export default class ShadowsocksUdpClient extends EventEmitter {
@@ -32,15 +32,25 @@ export default class ShadowsocksUdpClient extends EventEmitter {
         this.socket.on(("error"), (err) => this.emit("error", err));
     }
 
-    public write(data: Buffer) {
-        const buffer = this.method.encryptDataWithoutStream(Buffer.concat([this.header, data]));
-        this.socket.send(buffer, 0, buffer.length, this.port, this.host);
+    public write(data: Buffer): any {
+        this.writeWithShadowsocksHeader(data);
+    }
+
+    public writeWithShadowsocksHeader(data: Buffer, shadowsocksHeader?: ShadowsocksHeader): any {
+        if(shadowsocksHeader) {
+            const header: Buffer = ShadowsocksFormatter.build(shadowsocksHeader);
+            const buffer = this.method.encryptDataWithoutStream(Buffer.concat([header, data]));
+            this.socket.send(buffer, 0, buffer.length, this.port, this.host);
+        } else {
+            const buffer = this.method.encryptDataWithoutStream(Buffer.concat([this.header, data]));
+            this.socket.send(buffer, 0, buffer.length, this.port, this.host);
+        }
     }
 
     public data(data: Buffer) {
         try {
             data = this.method.decryptDataWithoutStream(data);
-            this.emit("data", ShadowsocksFormatter.format(data).payload);
+            this.emit("data", ShadowsocksFormatter.format(data));
         } catch (error) {
             this.emit("error", error);
         }

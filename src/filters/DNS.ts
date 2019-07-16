@@ -6,11 +6,10 @@ import {
     IpProtocol,
     EthernetType,
 } from "../PacketsStruct";
-import ConnectionManager from "../ConnectionManager";
 import UdpPacketFormatter from "../formatters/UdpPacketFormatter";
+import ConnectionManager, { ConnectionManagerInterface } from "../ConnectionManager";
 
-// tslint:disable-next-line:interface-name
-interface UdpConnection {
+interface UdpConnection extends ConnectionManagerInterface{
     ipversion: EthernetType;
     onFree?: () => void;
     udpClient: dgram.Socket;

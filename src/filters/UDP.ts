@@ -5,27 +5,26 @@ import {
     IpProtocol,
     EthernetType,
 } from "../PacketsStruct";
-import ConnectionManager from "../ConnectionManager";
 import UdpPacketFormatter from "../formatters/UdpPacketFormatter";
 import ShadowsocksUdpClient from "../shadowsocks/ShadowsocksUdpClient";
+import ConnectionManager, { ConnectionManagerInterface } from "../ConnectionManager";
+import { ShadowsocksHeader, ShadowsocksHeaderVersion } from "../shadowsocks/ShadowsocksFormatter";
 
-// tslint:disable-next-line:interface-name
-interface UdpConnection {
+interface UdpConnection extends ConnectionManagerInterface {
     ipversion: EthernetType;
     onFree?: () => void;
+    close?: () => void;
     udpClient: ShadowsocksUdpClient;
     sourceAddress: Buffer;
     sourceIp: Buffer;
     sourcePort: number;
     targetAddress: Buffer;
-    targetIp: Buffer;
-    targetPort: number;
     identification: number;
 }
 
 const connections = new ConnectionManager<UdpConnection>();
 
-function buildUdpPacket(connection: UdpConnection, data: Buffer): Buffer {
+function buildUdpPacket(connection: UdpConnection, data: Buffer, { srcIp, srcPort, dstIp, dstPort }): Buffer {
     connection.identification = PacketUtils.increaseNumber(connection.identification, 65536);
     return UdpPacketFormatter.build({
         type: connection.ipversion,
@@ -34,10 +33,10 @@ function buildUdpPacket(connection: UdpConnection, data: Buffer): Buffer {
         destinaltionAddress: connection.sourceAddress,
         TTL: 64,
         protocol: IpProtocol.UDP,
-        sourceIp: connection.sourceIp,
-        destinationIp: connection.targetIp,
-        sourcePort: connection.sourcePort,
-        destinationPort: connection.targetPort,
+        sourceIp: srcIp,
+        destinationIp: dstIp,
+        sourcePort: srcPort,
+        destinationPort: dstPort,
         totalLength: 28 + data.length,
         identification: connection.identification,
         TOS: 0,
@@ -46,7 +45,42 @@ function buildUdpPacket(connection: UdpConnection, data: Buffer): Buffer {
     });
 }
 
-export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
+function buildUdpConnectionFromUdpPacket(udpPacket: UdpPacket): UdpConnection {
+    let isClosed: boolean = false;
+    const connection: UdpConnection = {
+        ipversion: udpPacket.version === 4 ? EthernetType.IPv4 : EthernetType.IPv6,
+        identification: 100,
+        sourceAddress: udpPacket.sourceAddress,
+        targetAddress: udpPacket.destinaltionAddress,
+        sourceIp: udpPacket.sourceIp,
+        sourcePort: udpPacket.sourcePort,
+        udpClient: new ShadowsocksUdpClient(
+            Config.get("ShadowsocksUdpHost"),
+            Config.get("ShadowsocksUdpPort"),
+            Config.get("ShadowsocksUdpPasswd"),
+            Config.get("ShadowsocksUdpMethod"),
+            udpPacket.version === 4,
+            udpPacket.destinationIp,
+            udpPacket.destinationPort,
+        ),
+
+        close() {
+            if (isClosed) {
+                return;
+            }
+            isClosed = true;
+            connection.udpClient.close();
+            connection.udpClient.removeAllListeners();
+        },
+
+        onFree() {
+            connection.close();
+        },
+    };
+    return connection;
+}
+
+export default function (data: Buffer, write: (data: Buffer) => void, next: () => void) {
 
     if (PacketUtils.isBroadCast(data)) {
         return next();
@@ -69,56 +103,44 @@ export default function(data: Buffer, write: (data: Buffer) => void, next: () =>
     }
 
     /* unsupported large udp packet now. */
-    if (data.length > 1400) { return; }
+    if (data.length > 1410) {
+        return;
+    }
 
     const udpPacket: UdpPacket = UdpPacketFormatter.format(data);
-
-    const connectionId: string = PacketUtils.getConnectionId(udpPacket);
-
+    const connectionId: string =`${udpPacket.sourceIp}-${udpPacket.sourcePort}`;
     let connection: UdpConnection = connections.get(connectionId);
 
-    if (connection == null) {
-        let isClosed: boolean = false;
-        connection = {
-            ipversion: udpPacket.version === 4 ? EthernetType.IPv4 : EthernetType.IPv6,
-            identification: 100,
-            sourceAddress: udpPacket.sourceAddress,
-            targetAddress: udpPacket.destinaltionAddress,
-            sourceIp: udpPacket.destinationIp,
-            targetIp: udpPacket.sourceIp,
-            sourcePort: udpPacket.destinationPort,
-            targetPort: udpPacket.sourcePort,
-            udpClient: new ShadowsocksUdpClient(
-                Config.get("ShadowsocksUdpHost"),
-                Config.get("ShadowsocksUdpPort"),
-                Config.get("ShadowsocksUdpPasswd"),
-                Config.get("ShadowsocksUdpMethod"),
-                udpPacket.version === 4,
-                udpPacket.destinationIp,
-                udpPacket.destinationPort,
-            ),
-            onFree() {
-                if (isClosed) { return; }
-                isClosed = true;
-                connection.udpClient.close();
-            },
-        };
-        // tslint:disable-next-line:no-shadowed-variable
-        connection.udpClient.on("data", (data) => {
-            // tslint:disable-next-line:no-shadowed-variable
-            const udpPacket: Buffer = buildUdpPacket(connection, data);
+    if (connection === null) {
+        connection = buildUdpConnectionFromUdpPacket(udpPacket);
+
+        connection.udpClient.on("data", (shadowsocksData: ShadowsocksHeader) => {
+            /* 更新连接存活时间 */
             connections.get(connectionId);
-            write(udpPacket);
+
+            const paddingSendPacket: Buffer = buildUdpPacket(
+                connection,
+                shadowsocksData.payload,
+                { 
+                    srcIp: PacketUtils.stringToIpv4(shadowsocksData.address as string), srcPort: shadowsocksData.port,
+                    dstIp: connection.sourceIp, dstPort: connection.sourcePort,
+                }
+            );
+            write(paddingSendPacket);
         });
+
         connection.udpClient.on("error", (err) => {
-            isClosed = true;
-            connection.udpClient.removeAllListeners();
+            connection.close();
             connections.remove(connectionId);
         });
         connections.add(connectionId, connection);
     }
 
-    connection.udpClient.write(udpPacket.payload);
+    connection.udpClient.writeWithShadowsocksHeader(udpPacket.payload, {
+        version: udpPacket.version === 4 ? ShadowsocksHeaderVersion.IPv4 : ShadowsocksHeaderVersion.IPv6,
+        address: udpPacket.destinationIp,
+        port: udpPacket.destinationPort,
+    });
 }
 
 

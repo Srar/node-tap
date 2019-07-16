@@ -1,6 +1,11 @@
-export default class ConnectionManager<T> {
 
-    private timer: number;
+export interface ConnectionManagerInterface {
+    onFree?: () => void;
+};
+
+export default class ConnectionManager<T extends ConnectionManagerInterface> {
+
+    private timer: NodeJS.Timer;
     private connections: { [key: string]: { lastAccessTime: number, value: T } } = {};
     private connectionsCount: number = 0;
 

@@ -1,19 +1,17 @@
-// tslint:disable-next-line:no-var-requires
-const native = require("../index.js");
-
 import * as fs from "fs";
+import { isIP } from "net";
 import * as dns from "dns";
 import Config from "./Config";
 import * as path from "path";
 import { promisify } from "util";
 import * as iconv from "iconv-lite";
 import TAPControl from "./TAPControl";
+import * as native from "../index.js";
 import PacketUtils from "./PacketUtils";
 import * as cprocess from "child_process";
 import * as NativeTypes from "./NativeTypes";
 import DeviceConfiguration from "./DeviceConfiguration";
 
-// tslint:disable-next-line:no-var-requires
 const optimist = require("optimist")
     .usage("Usage: $0 --host [shadowsocks host] --port [shadowsocks port] --passwd [shadowsocks password] --xtudp [x times udp packets]")
     .default("xtudp", 1)
@@ -45,24 +43,6 @@ async function main() {
     }
 
     {
-        const isIP = (str: string) => {
-            const ipArray = str.split(".");
-            if (ipArray.length !== 4) {
-                return false;
-            }
-            for (const item of ipArray) {
-                const itemByte = parseInt(item, 10);
-                if (isNaN(itemByte)) {
-                    return false;
-                }
-                if (itemByte >= 0 && itemByte <= 254) {
-                    continue;
-                }
-                return false;
-            }
-            return true;
-        };
-
         Config.set("XTUdp", parseInt(argv.xtudp, 10));
 
         if (isNaN(Config.get("XTUdp"))) {
@@ -269,7 +249,6 @@ async function main() {
         }
     }
 
-    // tslint:disable-next-line:ban-types
     const filters: Array<Function> = [];
     filters.push(require("./filters/TCP").default);
     filters.push(require("./filters/DNS").default);
@@ -293,7 +272,6 @@ async function main() {
             if (func === undefined) {
                 return;
             }
-            // tslint:disable-next-line:no-shadowed-variable
             func(data, (data) => tapControl.write(data), next);
         }
         next();
