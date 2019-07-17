@@ -31,13 +31,15 @@
         "cap": "^0.2.0",
         "iconv-lite": "^0.4.19",
         "ip6": "^0.1.5",
+        "moment": "^2.24.0",
         "nan": "^2.7.0",
         "node-gyp": "^3.6.2",
         "optimist": "^0.6.1",
         "pkg": "^4.3.0",
         "raw-socket": "^1.5.2",
         "ts-node": "^8.3.0",
-        "typescript": "^3.5.3"
+        "typescript": "^3.5.3",
+        "winston": "^3.2.1"
     },
     "gypfile": true
 }

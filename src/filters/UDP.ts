@@ -1,4 +1,5 @@
 import Config from "../Config";
+import logger from "../logger";
 import PacketUtils from "../PacketUtils";
 import {
     UdpPacket,
@@ -75,8 +76,10 @@ function buildUdpConnectionFromUdpPacket(udpPacket: UdpPacket): UdpConnection {
 
         onFree() {
             connection.close();
+            logger.debug(`关闭UDP链接: ${PacketUtils.ipv4ToString(udpPacket.destinationIp)}:${udpPacket.destinationPort} NAT:${connection.sourceIp.join(".")}-${connection.sourcePort}`);
         },
     };
+    
     return connection;
 }
 
@@ -108,7 +111,7 @@ export default function (data: Buffer, write: (data: Buffer) => void, next: () =
     }
 
     const udpPacket: UdpPacket = UdpPacketFormatter.format(data);
-    const connectionId: string =`${udpPacket.sourceIp}-${udpPacket.sourcePort}`;
+    const connectionId: string =`${udpPacket.sourceIp.join(".")}-${udpPacket.sourcePort}`;
     let connection: UdpConnection = connections.get(connectionId);
 
     if (connection === null) {
@@ -134,6 +137,7 @@ export default function (data: Buffer, write: (data: Buffer) => void, next: () =
             connections.remove(connectionId);
         });
         connections.add(connectionId, connection);
+        logger.debug(`创建UDP链接: ${PacketUtils.ipv4ToString(udpPacket.destinationIp)}:${udpPacket.destinationPort} NAT:${connectionId}`);
     }
 
     connection.udpClient.writeWithShadowsocksHeader(udpPacket.payload, {

@@ -1,4 +1,6 @@
 import Config from "../Config";
+import logger from "../logger";
+import * as EventEmitter from "events";
 import PacketUtils from "../PacketUtils";
 import {
     TcpPacket,
@@ -7,11 +9,9 @@ import {
 } from "../PacketsStruct";
 import ShadowsocksTcpClient from "../shadowsocks/ShadowsocksTcpClient";
 import TcpPacketFormatter from "../formatters/TcpPacketFormatter";
-import * as EventEmitter from "events";
 
 const U_INT32_MAXIMUM = 0xffffffff;
 
-// tslint:disable-next-line:interface-name
 interface TcpConnection {
     ipversion: EthernetType;
     localAddress: Buffer;
@@ -375,10 +375,10 @@ export default function(data: Buffer, write: (data: Buffer) => void, next: () =>
         }, write);
         session.once("closed", () => {
             delete connections[tcpConnectionId];
-            // console.log("bye bye", PacketUtils.ipAddressToString(tcpPacket.destinationIp), "source port", session.connection.targetPort);
+            logger.debug(`关闭TCP链接: ${PacketUtils.ipv4ToString(tcpPacket.destinationIp)}:${tcpPacket.destinationPort} NAT:${tcpConnectionId}`);
         });
         connections.set(tcpConnectionId, session);
-        // console.log("connect", PacketUtils.ipAddressToString(tcpPacket.destinationIp), "source port", tcpPacket.sourcePort);
+        logger.debug(`创建TCP链接: ${PacketUtils.ipv4ToString(tcpPacket.destinationIp)}:${tcpPacket.destinationPort} NAT:${tcpConnectionId}`);
     }
     session.dataRouter(data, tcpPacket);
 }

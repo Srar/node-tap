@@ -1,8 +1,9 @@
 import * as fs from "fs";
 import { isIP } from "net";
 import * as dns from "dns";
-import Config from "./Config";
 import * as path from "path";
+import logger from "./logger";
+import Config from "./Config";
 import { promisify } from "util";
 import * as iconv from "iconv-lite";
 import TAPControl from "./TAPControl";
@@ -107,16 +108,16 @@ async function main() {
 
     /* 设置OpenVPN网卡 */
     if (!TAPControl.checkAdapterIsInstalled()) {
-        console.log("Installing driver...");
+        logger.info(`正在安装虚拟网卡...`);
         const result = TAPControl.installAdapter(path.join(process.cwd(), "driver/tapinstall.exe"));
         if (result !== 0) {
-            console.error(`Driver was not successfully installed. Exit code: ${result}.`);
+            logger.error(`虚拟网卡安装失败. 返回值: ${result}.`);
             if (result === 2) {
-                console.log(`Please run as administrator.`);
+                logger.error(`请使用管理员权限运行.`);
             }
             process.exit(-1);
         }
-        console.log("Install driver successfully.");
+        logger.info(`虚拟网卡安装成功.`);
     }
     const tapControl: TAPControl = TAPControl.init();
     const tapInfo = tapControl.getAdapterInfo();
@@ -131,9 +132,13 @@ async function main() {
             defaultDevice = device;
         }
     }
-    if (defaultDevice == null) {
-        throw new Error("无法找到默认网卡.");
+    if (defaultDevice === null) {
+        logger.error(`无法找到默认网卡.`);
+        logger.error(`默认网关: ${defaultGateway}`);
+        logger.error(`网卡信息: ${JSON.stringify(allDevicesInfo)}`);
+        process.exit(-1);
     }
+
     Config.set("DefaultIp", defaultDevice.currentIpAddress);
     Config.set("DefaultGateway", defaultDevice.gatewayIpAddress);
 
@@ -154,13 +159,16 @@ async function main() {
                 dwForwardAge: route.age,
                 dwForwardMetric1: route.metric1,
             });
-            if (code !== 0) {
-                console.log(`Route deletion failed. Code: ${code}. Route: ${route.destIp}/${route.netMask}`);
+
+            if (code === 0) {
+                logger.info(`删除路由: ${route.destIp}/${route.netMask}`);
+            } else {
+                logger.warn(`删除路由失败: ${route.destIp}/${route.netMask}`);
             }
         }
     }
 
-    /* 设置路由表 */
+    /* 设置网卡信息 & Shadowsocks IP路由 */
     {
         const initCommands: Array<Array<string>> = [
             ["netsh", "interface", "ipv4", "set", "interface", `${tapInfo.index}`, "metric=1"],
@@ -184,7 +192,7 @@ async function main() {
         }
 
         if (argv.disablev6 === "true") {
-            console.log("IPv6 has been disabled.");
+            logger.info(`IPv6已禁用.`);
             initCommands.push(
                 ["netsh", "int", "ipv6", "delete", "route", "::/0", `interface=${tapInfo.index}`, `nexthop=${DeviceConfiguration.GATEWAY_IPV6_ADDRESS}`],
                 ["netsh", "int", "ipv6", "delete", "address", `interface=${tapInfo.index}`, `address=${DeviceConfiguration.LOCAL_IPV6_ADDRESS}`],
@@ -198,17 +206,18 @@ async function main() {
         }
 
         initCommands.forEach((command) => {
-            process.stdout.write(command.join(" ") + " ");
+            
             const result = cprocess.spawnSync(command[0], command.slice(1), { timeout: 1000 * 5 });
             const errorMessage: string = iconv.decode(result.stderr, "cp936").toString().trim();
-            if (errorMessage.length !== 0) {
-                process.stderr.write(errorMessage);
+            if (errorMessage.length === 0) {
+                logger.info(`执行命令: ${command.join(" ")}`);
+            } else {
+                logger.warn(`执行命令: ${command.join(" ")} 错误信息: ${errorMessage}`);
             }
-            process.stdout.write("\n");
         });
     }
 
-    // 添加自定义路由表
+    /* 添加路由表 */
     {
         const routes: Array<Array<string | number>> = [];
 
@@ -242,10 +251,11 @@ async function main() {
                 dwForwardNextHopAS: 0,
                 dwForwardMetric1: 2,
             });
-            if (code !== 0) {
-                console.log(`Route addition failed. Code: ${code}. Route: ${ip}/${netmask}`);
+            if (code === 0) {
+                logger.info(`添加路由:  ${ip}/${netmask}`);
+            } else {
+                logger.warn(`添加路由失败:  ${ip}/${netmask}`);
             }
-
         }
     }
 
@@ -261,8 +271,8 @@ async function main() {
         let data: Buffer = null;
         try {
             data = await tapControl.read() as Buffer;
-        } catch (error) {
-            console.error("Failed to get data from adapter.", error);
+        } catch (error) {   
+            logger.error(error);
             return setImmediate(loop);
         }
 

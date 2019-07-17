@@ -1,29 +1,38 @@
-// tslint:disable-next-line:no-var-requires
-const Cap = require("cap").Cap;
+
+import { Cap } from "cap";
 import * as raw from "raw-socket";
 
+import logger from "../logger";
 import Config from "../Config";
 import PacketUtils from "../PacketUtils";
 
-function registerXTUdp() {
+(function () {
     const XTUdp: number = Config.get("XTUdp");
     if (XTUdp <= 1) {
-        console.log("XTUdp: disabled");
+        logger.info(`UDP多倍发包已禁用.`);
         return;
     }
 
-    console.log("XTUdp:", Config.get("XTUdp"));
-    console.log("Default ip of adapter:", Config.get("DefaultIp"));
-    console.log("Default gateway of adapter:", Config.get("DefaultGateway"));
+    logger.info(`UDP多倍发包倍率: ${XTUdp}`);
+    logger.info(`UDP多倍发包网卡IP: ${Config.get("DefaultIp")}`);
 
     /* 注册Pcap */
     const cap = new Cap();
-    const device = Cap.findDevice(Config.get("DefaultIp"));
-    const filter = `udp and dst port ${Config.get("ShadowsocksUdpPort")} and dst host ${Config.get("ShadowsocksUdpHost")}`;
-    const bufSize = 10 * 1024 * 1024;
-    const buffer = Buffer.alloc(65535);
+
+    const device: string = Cap.findDevice(Config.get("DefaultIp"));
+    if (device) {
+        logger.info(`UDP多倍发包网卡: ${device}`);
+    } else {
+        logger.warn(`UDP多倍发包已禁用: 无法找到默认网卡`);
+        return;
+    }
+
+    const filter: string = `udp and dst port ${Config.get("ShadowsocksUdpPort")} and dst host ${Config.get("ShadowsocksUdpHost")}`;
+    logger.info(`UDP多倍发包规则: ${filter}`)
+    
+    const bufSize: number = 10 * 1024 * 1024;
+    const buffer: Buffer = Buffer.alloc(65535);
     const linkType = cap.open(device, filter, bufSize, buffer);
-    // tslint:disable-next-line:no-unused-expression
     cap.setMinBytes && cap.setMinBytes(0);
 
     /* 注册RawScoket */
@@ -32,8 +41,9 @@ function registerXTUdp() {
     });
     rawsocket.setOption(raw.SocketLevel.IPPROTO_IP, raw.SocketOption.IP_HDRINCL, new Buffer([0x00, 0x00, 0x00, 0x01]), 4);
 
-    const SPECIAL_TTL: number = 0x7B; // 123
-    cap.on("packet",  (nbytes, trunc) => {
+    /* 基于TTL过滤已多倍发送的数据包 */
+    const SPECIAL_TTL: number = 0x7B;
+    cap.on("packet", (nbytes, trunc) => {
         /* Ethernet + IP/TCP */
         if (nbytes < 34) {
             return;
@@ -52,10 +62,8 @@ function registerXTUdp() {
             });
         }
     });
-}
+})();
 
-registerXTUdp();
-
-export default function(data: Buffer, write: (data: Buffer) => void, next: () => void) {
+export default function (data: Buffer, write: (data: Buffer) => void, next: () => void) {
     next();
 }
