@@ -57,7 +57,7 @@ import PacketUtils from "../PacketUtils";
         for (let i = 1; i < XTUdp; i++) {
             rawsocket.send(sendingBuffer, 0, sendingBuffer.length, targetIpAddress, (error, bytes) => {
                 if (error) {
-                    console.error(error);
+                    logger.error(error);
                 }
             });
         }
