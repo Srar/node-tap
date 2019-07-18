@@ -121,7 +121,7 @@ void RwEventProcess::New(const Nan::FunctionCallbackInfo<v8::Value> &info)
     if (info.IsConstructCall())
     {
         // Invoked as constructor: `new RwEventProcess(...)`
-        long handle = info[0]->IsUndefined() ? 0 : info[0]->NumberValue();
+        long handle = info[0]->IsUndefined() ? 0 : (long)info[0]->NumberValue();
         RwEventProcess *obj = new RwEventProcess((HANDLE)handle);
         obj->Wrap(info.This());
         info.GetReturnValue().Set(info.This());
