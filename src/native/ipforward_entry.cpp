@@ -63,11 +63,13 @@ NAN_METHOD(N_GetIpforwardEntry)
 
         /* Convert IPv4 addresses to strings */
         IpAddr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
-        strcpy_s(szDestIp, sizeof(szDestIp), inet_ntoa(IpAddr));
+        inet_ntop(AF_INET, &(IpAddr), szDestIp, sizeof(szDestIp));
+
         IpAddr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardMask;
-        strcpy_s(szMaskIp, sizeof(szMaskIp), inet_ntoa(IpAddr));
+        inet_ntop(AF_INET, &(IpAddr), szMaskIp, sizeof(szMaskIp));
+
         IpAddr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
-        strcpy_s(szGatewayIp, sizeof(szGatewayIp), inet_ntoa(IpAddr));
+        inet_ntop(AF_INET, &(IpAddr), szGatewayIp, sizeof(szGatewayIp));
 
         Nan::Set(obj, Nan::New("destIp").ToLocalChecked(), Nan::New(szDestIp).ToLocalChecked());
         Nan::Set(obj, Nan::New("netMask").ToLocalChecked(), Nan::New(szMaskIp).ToLocalChecked());
@@ -104,7 +106,7 @@ NAN_METHOD(N_CreateIpforwardEntry)
         if (obj->Get(Nan::New<v8::String>("dwForwardDest").ToLocalChecked())->IsString())
         {
             std::string dwForwardDest = *v8::String::Utf8Value(obj->Get(Nan::New<v8::String>("dwForwardDest").ToLocalChecked())->ToString());
-            ifr.dwForwardDest = inet_addr(dwForwardDest.c_str());
+            inet_pton(AF_INET, dwForwardDest.c_str(), &(ifr.dwForwardDest));
         }
     }
 
@@ -115,7 +117,7 @@ NAN_METHOD(N_CreateIpforwardEntry)
         if (obj->Get(Nan::New<v8::String>("dwForwardMask").ToLocalChecked())->IsString())
         {
             std::string dwForwardMask = *v8::String::Utf8Value(obj->Get(Nan::New<v8::String>("dwForwardMask").ToLocalChecked())->ToString());
-            ifr.dwForwardMask = inet_addr(dwForwardMask.c_str());
+            inet_pton(AF_INET, dwForwardMask.c_str(), &(ifr.dwForwardMask));
         }
     }
 
@@ -129,7 +131,7 @@ NAN_METHOD(N_CreateIpforwardEntry)
         if (obj->Get(Nan::New<v8::String>("dwForwardNextHop").ToLocalChecked())->IsString())
         {
             std::string dwForwardNextHop = *v8::String::Utf8Value(obj->Get(Nan::New<v8::String>("dwForwardNextHop").ToLocalChecked())->ToString());
-            ifr.dwForwardNextHop = inet_addr(dwForwardNextHop.c_str());
+            inet_pton(AF_INET, dwForwardNextHop.c_str(), &(ifr.dwForwardNextHop));
         }
     }
 
@@ -198,7 +200,7 @@ NAN_METHOD(N_DeleteIpforwardEntry)
         if (obj->Get(Nan::New<v8::String>("dwForwardDest").ToLocalChecked())->IsString())
         {
             std::string dwForwardDest = *v8::String::Utf8Value(obj->Get(Nan::New<v8::String>("dwForwardDest").ToLocalChecked())->ToString());
-            ifr.dwForwardDest = inet_addr(dwForwardDest.c_str());
+            inet_pton(AF_INET, dwForwardDest.c_str(), &(ifr.dwForwardDest));
         }
     }
 
@@ -209,7 +211,7 @@ NAN_METHOD(N_DeleteIpforwardEntry)
         if (obj->Get(Nan::New<v8::String>("dwForwardMask").ToLocalChecked())->IsString())
         {
             std::string dwForwardMask = *v8::String::Utf8Value(obj->Get(Nan::New<v8::String>("dwForwardMask").ToLocalChecked())->ToString());
-            ifr.dwForwardMask = inet_addr(dwForwardMask.c_str());
+            inet_pton(AF_INET, dwForwardMask.c_str(), &(ifr.dwForwardMask));
         }
     }
 
@@ -223,7 +225,7 @@ NAN_METHOD(N_DeleteIpforwardEntry)
         if (obj->Get(Nan::New<v8::String>("dwForwardNextHop").ToLocalChecked())->IsString())
         {
             std::string dwForwardNextHop = *v8::String::Utf8Value(obj->Get(Nan::New<v8::String>("dwForwardNextHop").ToLocalChecked())->ToString());
-            ifr.dwForwardNextHop = inet_addr(dwForwardNextHop.c_str());
+            inet_pton(AF_INET, dwForwardNextHop.c_str(), &(ifr.dwForwardNextHop));
         }
     }
 
