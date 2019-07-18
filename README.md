@@ -2,11 +2,11 @@
 基于TypeScript实现的Tun2Shadowsocks.
 目前可用于Windows平台.
 
-# 测试实现特性
-* 缩水TCP实现(⚠️)
-* UDP转发(✅)
-* UDP转发多倍发包(✅)
-* 自定义路由表(✅)
+# 实现特性
+* 精简TCP实现
+* UDP转发
+* UDP转发多倍发包
+* 自定义路由表
 
 # 使用
 
